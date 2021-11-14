@@ -19,6 +19,8 @@ import math
 
 import tensorflow as tf
 
+from mobilenet_v1 import mobilenet_v1_emb
+
 
 def _next_power_of_two(x):
   """Calculates the smallest enclosing power of two for an input.
@@ -34,7 +36,7 @@ def _next_power_of_two(x):
 
 def prepare_model_settings(label_count, sample_rate, clip_duration_ms,
                            window_size_ms, window_stride_ms, feature_bin_count,
-                           preprocess):
+                           preprocess, embedding_size):
   """Calculates common settings needed for all models.
 
   Args:
@@ -85,6 +87,7 @@ def prepare_model_settings(label_count, sample_rate, clip_duration_ms,
       'sample_rate': sample_rate,
       'preprocess': preprocess,
       'average_window_width': average_window_width,
+      'embedding_size': embedding_size
   }
 
 
@@ -138,6 +141,9 @@ def create_model(fingerprint_input, model_settings, model_architecture,
                                   is_training)
   elif model_architecture == 'tiny_embedding_conv':
     return create_tiny_embedding_conv_model(fingerprint_input, model_settings,
+                                            is_training)
+  elif model_architecture == 'mobilenet_embedding':
+    return create_mobilenet_embedding_model(fingerprint_input, model_settings,
                                             is_training)
   else:
     raise Exception('model_architecture argument "' + model_architecture +
@@ -891,3 +897,70 @@ def create_tiny_embedding_conv_model(fingerprint_input, model_settings,
     return final_fc, dropout_rate
   else:
     return final_fc
+
+def create_mobilenet_embedding_model(fingerprint_input, model_settings,
+                                     is_training):
+  """Builds a convolutional model aimed at microcontrollers.
+
+  Devices like DSPs and microcontrollers can have very small amounts of
+  memory and limited processing power. This model is designed to use less
+  than 20KB of working RAM, and fit within 32KB of read-only (flash) memory.
+
+  Here's the layout of the graph:
+
+  (fingerprint_input)
+          v
+      [Conv2D]<-(weights)
+          v
+      [BiasAdd]<-(bias)
+          v
+        [Relu]
+          v
+      [Conv2D]<-(weights)
+          v
+      [BiasAdd]<-(bias)
+          v
+        [Relu]
+          v
+      [Conv2D]<-(weights)
+          v
+      [BiasAdd]<-(bias)
+          v
+        [Relu]
+          v
+      [MatMul]<-(weights)
+          v
+      [BiasAdd]<-(bias)
+          v
+
+  This doesn't produce particularly accurate results, but it's designed to be
+  used as the first stage of a pipeline, running on a low-energy piece of
+  hardware that can always be on, and then wake higher-power chips when a
+  possible utterance has been found, so that more accurate analysis can be done.
+
+  During training, a dropout node is introduced after the relu, controlled by a
+  placeholder.
+
+  Args:
+    fingerprint_input: TensorFlow node that will output audio feature vectors.
+    model_settings: Dictionary of information about the model.
+    is_training: Whether the model is going to be used for training.
+
+  Returns:
+    TensorFlow node outputting logits results, and optionally a dropout
+    placeholder.
+  """
+  if is_training:
+    dropout_rate = tf.compat.v1.placeholder(tf.float32, name='dropout_rate')
+  input_frequency_size = model_settings['fingerprint_width']
+  input_time_size = model_settings['spectrogram_length']
+  fingerprint_4d = tf.reshape(fingerprint_input,
+                              [-1, input_time_size, input_frequency_size, 1])
+
+  embs = mobilenet_v1_emb(fingerprint_4d, emb_size=model_settings['embedding_size'], dropout_keep_prob=dropout_rate, is_training=is_training, min_depth=8, depth_multiplier=0.25)
+  embs = tf.compat.v1.reshape(embs[0], [-1, model_settings['embedding_size']])  # embs is a tuple?? not sure why
+
+  if is_training:
+    return embs, dropout_rate
+  else:
+    return embs

@@ -94,7 +94,7 @@ def main(_):
   model_settings = models.prepare_model_settings(
       len(input_data.prepare_words_list(FLAGS.wanted_words.split(','))),
       FLAGS.sample_rate, FLAGS.clip_duration_ms, FLAGS.window_size_ms,
-      FLAGS.window_stride_ms, FLAGS.feature_bin_count, FLAGS.preprocess)
+      FLAGS.window_stride_ms, FLAGS.feature_bin_count, FLAGS.preprocess, FLAGS.embedding_size)
   audio_processor = input_data.AudioProcessor(
       FLAGS.data_url, FLAGS.data_dir,
       FLAGS.silence_percentage, FLAGS.unknown_percentage,
@@ -119,7 +119,7 @@ def main(_):
                                                    len(learning_rates_list)))
 
   input_placeholder = tf.compat.v1.placeholder(
-      tf.float32, [None, fingerprint_size], name='fingerprint_input')
+      tf.float32, [FLAGS.batch_size, fingerprint_size], name='fingerprint_input')
   if FLAGS.quantize:
     fingerprint_min, fingerprint_max = input_data.get_features_range(
         model_settings)
@@ -128,15 +128,15 @@ def main(_):
   else:
     fingerprint_input = input_placeholder
 
-  logits, dropout_rate = models.create_model(
+  embs, dropout_rate = models.create_model(
       fingerprint_input,
       model_settings,
       FLAGS.model_architecture,
       is_training=True)
 
   # Define loss and optimizer
-  ground_truth_input = tf.compat.v1.placeholder(
-      tf.int64, [None], name='groundtruth_input')
+  #ground_truth_input = tf.compat.v1.placeholder(
+  #    tf.float32, [None, model_settings['embedding_size']], name='groundtruth_input')
 
   # Optionally we can add runtime checks to spot when NaNs or other symptoms of
   # numerical errors start occurring during training.
@@ -145,10 +145,27 @@ def main(_):
     checks = tf.compat.v1.add_check_numerics_ops()
     control_dependencies = [checks]
 
+  # For each input in batch, labels should look like: [*, +, -, -, -, -, ...]
+  # embs is batch_size x embedding_size
+  #print(f"\nembs: {embs.shape}\n")
+  input_sample = embs[0]
+  pos_samples = embs[1]   # 0 is the "input", 1 is positive
+  neg_samples = embs[2:]  # rest are negative
+  pos = tf.compat.v1.math.squared_difference(input_sample, pos_samples, name=None)  # 1d: embedding_size
+  neg = tf.compat.v1.math.squared_difference(input_sample, neg_samples, name=None)  # 2d: batch_size-2 x embedding_size
+  #print(f"\npos: {pos.shape}\n")
+  #print(f"\nneg: {neg.shape}\n")
+
+  num = tf.compat.v1.math.exp(-pos)  # TODO add temp?
+  denom = tf.compat.v1.math.reduce_sum(tf.compat.v1.math.exp(-neg), axis=0)
+
   # Create the back propagation and training evaluation machinery in the graph.
-  with tf.compat.v1.name_scope('cross_entropy'):
-    cross_entropy_mean = tf.compat.v1.losses.sparse_softmax_cross_entropy(
-        labels=ground_truth_input, logits=logits)
+  with tf.compat.v1.name_scope('contrastive_loss'):
+    #cross_entropy_mean = tf.compat.v1.contrastive_losses.sparse_softmax_cross_entropy(
+    #    labels=ground_truth_input, logits=logits)
+    contrastive_loss = tf.compat.v1.math.reduce_sum(tf.compat.v1.divide(num, denom))
+  
+  print(f"\ncontrastive_loss: {type(contrastive_loss)}, {contrastive_loss}\n")
 
   if FLAGS.quantize:
     try:
@@ -167,23 +184,23 @@ def main(_):
         tf.float32, [], name='learning_rate_input')
     if FLAGS.optimizer == 'gradient_descent':
       train_step = tf.compat.v1.train.GradientDescentOptimizer(
-          learning_rate_input).minimize(cross_entropy_mean)
+          learning_rate_input).minimize(contrastive_loss)
     elif FLAGS.optimizer == 'momentum':
       train_step = tf.compat.v1.train.MomentumOptimizer(
           learning_rate_input, .9,
-          use_nesterov=True).minimize(cross_entropy_mean)
+          use_nesterov=True).minimize(contrastive_loss)
     else:
       raise Exception('Invalid Optimizer')
-  predicted_indices = tf.argmax(input=logits, axis=1)
-  correct_prediction = tf.equal(predicted_indices, ground_truth_input)
-  confusion_matrix = tf.math.confusion_matrix(labels=ground_truth_input,
-                                              predictions=predicted_indices,
-                                              num_classes=label_count)
-  evaluation_step = tf.reduce_mean(input_tensor=tf.cast(correct_prediction,
-                                                        tf.float32))
+  #predicted_indices = tf.argmax(input=logits, axis=1)
+  #correct_prediction = tf.equal(predicted_indices, ground_truth_input)
+  #confusion_matrix = tf.math.confusion_matrix(labels=ground_truth_input,
+  #                                            predictions=predicted_indices,
+  #                                            num_classes=label_count)
+  #evaluation_step = tf.reduce_mean(input_tensor=tf.cast(correct_prediction,
+  #                                                      tf.float32))
   with tf.compat.v1.get_default_graph().name_scope('eval'):
-    tf.compat.v1.summary.scalar('cross_entropy', cross_entropy_mean)
-    tf.compat.v1.summary.scalar('accuracy', evaluation_step)
+    tf.compat.v1.summary.scalar('contrastive_loss', contrastive_loss)
+  #  tf.compat.v1.summary.scalar('accuracy', evaluation_step)
 
   global_step = tf.compat.v1.train.get_or_create_global_step()
   increment_global_step = tf.compat.v1.assign(global_step, global_step + 1)
@@ -231,58 +248,65 @@ def main(_):
     train_fingerprints, train_ground_truth = audio_processor.get_data(
         FLAGS.batch_size, 0, model_settings, FLAGS.background_frequency,
         FLAGS.background_volume, time_shift_samples, 'training', sess)
+
     # Run the graph with this batch of training data.
-    train_summary, train_accuracy, cross_entropy_value, _, _ = sess.run(
+    train_summary, loss, _, _ = sess.run(
         [
             merged_summaries,
-            evaluation_step,
-            cross_entropy_mean,
+            # evaluation_step,
+            contrastive_loss,
             train_step,
             increment_global_step,
         ],
         feed_dict={
             fingerprint_input: train_fingerprints,
-            ground_truth_input: train_ground_truth,
+            #ground_truth_input: train_ground_truth,
             learning_rate_input: learning_rate_value,
             dropout_rate: 0.5
         })
     train_writer.add_summary(train_summary, training_step)
+    #tf.compat.v1.logging.debug(
+    #    'Step #%d: rate %f, accuracy %.1f%%, cross entropy %f' %
+    #    (training_step, learning_rate_value, train_accuracy * 100,
+    #     cross_entropy_value))
     tf.compat.v1.logging.debug(
-        'Step #%d: rate %f, accuracy %.1f%%, cross entropy %f' %
-        (training_step, learning_rate_value, train_accuracy * 100,
-         cross_entropy_value))
+        'Step #%d: rate %f,loss %f' %
+        (training_step, learning_rate_value, loss))
     is_last_step = (training_step == training_steps_max)
     if (training_step % FLAGS.eval_step_interval) == 0 or is_last_step:
+    #  tf.compat.v1.logging.info(
+    #      'Step #%d: rate %f, accuracy %.1f%%, cross entropy %f' %
+    #      (training_step, learning_rate_value, train_accuracy * 100,
+    #       cross_entropy_value))
       tf.compat.v1.logging.info(
-          'Step #%d: rate %f, accuracy %.1f%%, cross entropy %f' %
-          (training_step, learning_rate_value, train_accuracy * 100,
-           cross_entropy_value))
+        'Step #%d: rate %f,loss %f' %
+        (training_step, learning_rate_value, loss))
       set_size = audio_processor.set_size('validation')
-      total_accuracy = 0
-      total_conf_matrix = None
+      #total_accuracy = 0
+      #total_conf_matrix = None
       for i in xrange(0, set_size, FLAGS.batch_size):
         validation_fingerprints, validation_ground_truth = (
             audio_processor.get_data(FLAGS.batch_size, i, model_settings, 0.0,
                                      0.0, 0, 'validation', sess))
         # Run a validation step and capture training summaries for TensorBoard
         # with the `merged` op.
-        validation_summary, validation_accuracy, conf_matrix = sess.run(
-            [merged_summaries, evaluation_step, confusion_matrix],
-            feed_dict={
-                fingerprint_input: validation_fingerprints,
-                ground_truth_input: validation_ground_truth,
-                dropout_rate: 0.0
-            })
-        validation_writer.add_summary(validation_summary, training_step)
+       # validation_summary, validation_accuracy, conf_matrix = sess.run(
+       #     [merged_summaries, evaluation_step, confusion_matrix],
+       #     feed_dict={
+       #         fingerprint_input: validation_fingerprints,
+       #         ground_truth_input: validation_ground_truth,
+       #         dropout_rate: 0.0
+       #     })
+       # validation_writer.add_summary(validation_summary, training_step)
         batch_size = min(FLAGS.batch_size, set_size - i)
-        total_accuracy += (validation_accuracy * batch_size) / set_size
-        if total_conf_matrix is None:
-          total_conf_matrix = conf_matrix
-        else:
-          total_conf_matrix += conf_matrix
-      tf.compat.v1.logging.info('Confusion Matrix:\n %s' % (total_conf_matrix))
-      tf.compat.v1.logging.info('Step %d: Validation accuracy = %.1f%% (N=%d)' %
-                                (training_step, total_accuracy * 100, set_size))
+       # total_accuracy += (validation_accuracy * batch_size) / set_size
+       # if total_conf_matrix is None:
+       #   total_conf_matrix = conf_matrix
+       # else:
+       #   total_conf_matrix += conf_matrix
+      #tf.compat.v1.logging.info('Confusion Matrix:\n %s' % (total_conf_matrix))
+      #tf.compat.v1.logging.info('Step %d: Validation accuracy = %.1f%% (N=%d)' %
+      #                          (training_step, total_accuracy * 100, set_size))
 
     # Save the model checkpoint periodically.
     if (training_step % FLAGS.save_step_interval == 0 or
@@ -295,27 +319,27 @@ def main(_):
 
   set_size = audio_processor.set_size('testing')
   tf.compat.v1.logging.info('set_size=%d', set_size)
-  total_accuracy = 0
+  #total_accuracy = 0
   total_conf_matrix = None
   for i in xrange(0, set_size, FLAGS.batch_size):
     test_fingerprints, test_ground_truth = audio_processor.get_data(
         FLAGS.batch_size, i, model_settings, 0.0, 0.0, 0, 'testing', sess)
-    test_accuracy, conf_matrix = sess.run(
-        [evaluation_step, confusion_matrix],
-        feed_dict={
-            fingerprint_input: test_fingerprints,
-            ground_truth_input: test_ground_truth,
-            dropout_rate: 0.0
-        })
+    #test_accuracy, conf_matrix = sess.run(
+    #    [evaluation_step, confusion_matrix],
+    #    feed_dict={
+    #        fingerprint_input: test_fingerprints,
+    #        ground_truth_input: test_ground_truth,
+    #        dropout_rate: 0.0
+    #    })
     batch_size = min(FLAGS.batch_size, set_size - i)
-    total_accuracy += (test_accuracy * batch_size) / set_size
-    if total_conf_matrix is None:
-      total_conf_matrix = conf_matrix
-    else:
-      total_conf_matrix += conf_matrix
-  tf.compat.v1.logging.warn('Confusion Matrix:\n %s' % (total_conf_matrix))
-  tf.compat.v1.logging.warn('Final test accuracy = %.1f%% (N=%d)' %
-                            (total_accuracy * 100, set_size))
+    #total_accuracy += (test_accuracy * batch_size) / set_size
+    #if total_conf_matrix is None:
+    #  total_conf_matrix = conf_matrix
+    #else:
+    #  total_conf_matrix += conf_matrix
+  #tf.compat.v1.logging.warn('Confusion Matrix:\n %s' % (total_conf_matrix))
+  #tf.compat.v1.logging.warn('Final test accuracy = %.1f%% (N=%d)' %
+  #                          (total_accuracy * 100, set_size))
 
 
 if __name__ == '__main__':
@@ -454,7 +478,7 @@ if __name__ == '__main__':
   parser.add_argument(
       '--model_architecture',
       type=str,
-      default='conv',
+      default='mobilenet_embedding',
       help='What model architecture to use')
   parser.add_argument(
       '--check_nans',
@@ -471,6 +495,11 @@ if __name__ == '__main__':
       type=str,
       default='mfcc',
       help='Spectrogram processing mode. Can be "mfcc", "average", or "micro"')
+  parser.add_argument(
+      '--embedding_size',
+      type=int,
+      default=100,
+      help='Embedding dimensionality')
 
   # Function used to parse --verbosity argument
   def verbosity_arg(value):
