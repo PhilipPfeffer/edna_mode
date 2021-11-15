@@ -23,6 +23,7 @@ import re
 import sys
 import tarfile
 import functools
+import glob
 
 import numpy as np
 from six.moves import urllib
@@ -271,7 +272,7 @@ class AudioProcessor(object):
     for person_dir in os.listdir(self.data_dir):
       if person_dir == '_background_noise_':
           continue
-      for wav_path in os.listdir(os.path.join(self.data_dir, person_dir)):
+      for wav_path in glob.glob(os.path.join(self.data_dir, person_dir, '*.wav')):
         if person_dir in self.data_index.keys():
           self.data_index[person_dir].append(os.path.join(self.data_dir, person_dir, wav_path))
         else:
