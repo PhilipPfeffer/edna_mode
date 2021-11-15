@@ -80,7 +80,6 @@ from tensorflow.python.platform import gfile
 
 FLAGS = None
 
-
 def main(_):
   # Set the verbosity based on flags (default is INFO, so we see all messages)
   tf.compat.v1.logging.set_verbosity(FLAGS.verbosity)
@@ -165,7 +164,7 @@ def main(_):
     #    labels=ground_truth_input, logits=logits)
     contrastive_loss = tf.compat.v1.math.reduce_sum(tf.compat.v1.divide(num, denom))
   
-  print(f"\ncontrastive_loss: {type(contrastive_loss)}, {contrastive_loss}\n")
+  #print(f"\ncontrastive_loss: {type(contrastive_loss)}, {contrastive_loss}\n")
 
   if FLAGS.quantize:
     try:
@@ -191,7 +190,7 @@ def main(_):
           use_nesterov=True).minimize(contrastive_loss)
     else:
       raise Exception('Invalid Optimizer')
-  #predicted_indices = tf.argmax(input=logits, axis=1)
+  #predicted_indices = tf.round(input=, axis=1)
   #correct_prediction = tf.equal(predicted_indices, ground_truth_input)
   #confusion_matrix = tf.math.confusion_matrix(labels=ground_truth_input,
   #                                            predictions=predicted_indices,
@@ -229,10 +228,10 @@ def main(_):
                     FLAGS.model_architecture + '.pbtxt')
 
   # Save list of words.
-  with gfile.GFile(
-      os.path.join(FLAGS.train_dir, FLAGS.model_architecture + '_labels.txt'),
-      'w') as f:
-    f.write('\n'.join(audio_processor.words_list))
+  #with gfile.GFile(
+  #    os.path.join(FLAGS.train_dir, FLAGS.model_architecture + '_labels.txt'),
+  #    'w') as f:
+  #  f.write('\n'.join(audio_processor.words_list))
 
   # Training loop.
   training_steps_max = np.sum(training_steps_list)
@@ -245,7 +244,7 @@ def main(_):
         learning_rate_value = learning_rates_list[i]
         break
     # Pull the audio samples we'll use for training.
-    train_fingerprints, train_ground_truth = audio_processor.get_data(
+    train_fingerprints = audio_processor.get_data(
         FLAGS.batch_size, 0, model_settings, FLAGS.background_frequency,
         FLAGS.background_volume, time_shift_samples, 'training', sess)
 
@@ -448,7 +447,7 @@ if __name__ == '__main__':
   parser.add_argument(
       '--batch_size',
       type=int,
-      default=100,
+      default=5,
       help='How many items to train with at once',)
   parser.add_argument(
       '--summaries_dir',
