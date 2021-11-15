@@ -152,8 +152,6 @@ def main(_):
   input_sample = embs[0]
   pos_samples = embs[1]   # 0 is the "input", 1 is positive
   neg_samples = embs[2:]  # rest are negative
-#  pos = tf.compat.v1.math.squared_difference(input_sample, pos_samples, name=None)  # 1d: embedding_size
-#  neg = tf.compat.v1.math.squared_difference(input_sample, neg_samples, name=None)  # 2d: batch_size-2 x embedding_size
   #print(f"\npos samples: {pos_samples.shape}\n")
   #print(f"\nneg samples: {neg_samples.shape}\n")
 
@@ -172,8 +170,8 @@ def main(_):
   num = tf.compat.v1.math.exp(-tf.compat.v1.math.abs(pos))  # TODO add temp?
   denom = tf.compat.v1.math.reduce_sum(tf.compat.v1.math.exp(-tf.compat.v1.math.abs(neg))) + num
 
-  print(f"\nnum: {num.shape}\n")
-  print(f"\ndenom: {denom.shape}\n")
+  #print(f"\nnum: {num.shape}\n")
+  #print(f"\ndenom: {denom.shape}\n")
 
   # Create the back propagation and training evaluation machinery in the graph.
   with tf.compat.v1.name_scope('contrastive_loss'):
@@ -221,6 +219,8 @@ def main(_):
   #                                                      tf.float32))
   with tf.compat.v1.get_default_graph().name_scope('eval'):
     tf.compat.v1.summary.scalar('contrastive_loss', contrastive_loss)
+    tf.compat.v1.summary.scalar('pos_similarity', pos)
+    tf.compat.v1.summary.scalar('neg_mean_similarity', tf.compat.v1.math.reduce_sum(neg) / (FLAGS.batch_size - 2))
   #  tf.compat.v1.summary.scalar('accuracy', evaluation_step)
 
   global_step = tf.compat.v1.train.get_or_create_global_step()
@@ -303,8 +303,7 @@ def main(_):
     #      (training_step, learning_rate_value, train_accuracy * 100,
     #       cross_entropy_value))
       tf.compat.v1.logging.info(
-        'Step #%d: rate %f,loss %f' %
-        (training_step, learning_rate_value, loss))
+         f'Step #{training_step}: rate {learning_rate_value}, loss {loss}, n {n}, d {d}, pos {p}, neg {ne}')
 
       # VALIDATION???
       set_size = audio_processor.set_size()
