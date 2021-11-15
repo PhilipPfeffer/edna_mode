@@ -455,6 +455,47 @@ class AudioProcessor(object):
     """
     return functools.reduce(lambda x,y: x+y, [len(values) for values in self.data_index.values()])
 
+  def get_data_inference(self, wav_path, model_settings, background_frequency,
+               background_volume_range, time_shift, sess):
+
+    # Data and labels will be populated and returned.
+    desired_samples = model_settings['desired_samples']
+    data = np.zeros((1, model_settings['fingerprint_size']))
+    sample = wav_path
+
+    # If we're time shifting, set up the offset for this sample.
+    if time_shift > 0:
+      time_shift_amount = np.random.randint(-time_shift, time_shift)
+    else:
+      time_shift_amount = 0
+    if time_shift_amount > 0:
+      time_shift_padding = [[time_shift_amount, 0], [0, 0]]
+      time_shift_offset = [0, 0]
+    else:
+      time_shift_padding = [[0, -time_shift_amount], [0, 0]]
+      time_shift_offset = [-time_shift_amount, 0]
+    input_dict = {
+        self.wav_filename_placeholder_: sample,
+        self.time_shift_padding_placeholder_: time_shift_padding,
+        self.time_shift_offset_placeholder_: time_shift_offset,
+    }
+
+    background_reshaped = np.zeros([desired_samples, 1])
+    background_volume = 0
+
+    input_dict[self.background_data_placeholder_] = background_reshaped
+    input_dict[self.background_volume_placeholder_] = background_volume
+    # If we want silence, mute out the main sample but leave the background.
+    input_dict[self.foreground_volume_placeholder_] = 1
+    # Run the graph to produce the output audio.
+    summary, data_tensor = sess.run(
+        [self.merged_summaries_, self.output_], feed_dict=input_dict)
+    self.summary_writer_.add_summary(summary)
+    data = data_tensor.flatten()
+    #data[i - offset, :] = data_tensor.flatten()
+
+    return data
+
   def get_data(self, how_many, offset, model_settings, background_frequency,
                background_volume_range, time_shift, mode, sess):
     """Gather samples from the data set, applying transformations as needed.

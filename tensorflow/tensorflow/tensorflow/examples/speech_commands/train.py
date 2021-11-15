@@ -100,94 +100,61 @@ def main(_):
       FLAGS.wanted_words.split(','), FLAGS.validation_percentage,
       FLAGS.testing_percentage, model_settings, FLAGS.summaries_dir)
   fingerprint_size = model_settings['fingerprint_size']
-  label_count = model_settings['label_count']
-  #time_shift_samples = int((FLAGS.time_shift_ms * FLAGS.sample_rate) / 1000)
-  time_shift_samples = 0  # TODO figure out what this is for...?
+  # label_count = model_settings['label_count']
+  #time_shift_samples = int((FLAGS.time_shift_ms  # Run in inference mode: load existing weights, no training.
+  time_shift_samples = 0  # TODO: figure out what this is for/how to use...
 
-  # Run in inference mode: load existing weights, no training.
-  if FLAGS.inference:
-    print("===================1===============")
-    # Load model.
-    models.load_variables_from_checkpoint(sess, FLAGS.inference_checkpoint_path)
-    print("===================2===============")
+  # Figure out the learning rates for each training phase. Since it's often
+  # effective to have high learning rates at the start of training, followed by
+  # lower levels towards the end, the number of steps and learning rates can be
+  # specified as comma-separated lists to define the rate at each stage. For
+  # example --how_many_training_steps=10000,3000 --learning_rate=0.001,0.0001
+  # will run 13,000 training loops in total, with a rate of 0.001 for the first
+  # 10,000, and 0.0001 for the final 3,000.
+  training_steps_list = list(map(int, FLAGS.how_many_training_steps.split(',')))
+  learning_rates_list = list(map(float, FLAGS.learning_rate.split(',')))
+  if len(training_steps_list) != len(learning_rates_list):
+    raise Exception(
+        '--how_many_training_steps and --learning_rate must be equal length '
+        'lists, but are %d and %d long instead' % (len(training_steps_list),
+                                                  len(learning_rates_list)))
 
-    # How many .wav files to run through model.
-    test_fingerprints, test_ground_truth = audio_processor.get_data(
-        how_many=1, offset=0, model_settings=model_settings, 
-        background_frequency=0.0, background_volume_range=0.0, time_shift=0, 
-        mode='testing', sess=sess)
-    print("===================3===============")
+  input_placeholder = tf.compat.v1.placeholder(
+      tf.float32, [None, fingerprint_size], name='fingerprint_input')
 
-    # Get embedding vector.
-    embedding_op_weights = None
-    embedding_op_biases = None
-    for var in tf.trainable_variables():
-        # print(var.name)
-        if var.name == 'MobilenetV1/Embs/Conv2d_1c_1x1/weights:0':
-            embedding_op_weights = var
-            print(embedding_op_weights)
-        if var.name == 'MobilenetV1/Embs/Conv2d_1c_1x1/biases:0':
-            embedding_op_biases = var
-            print(embedding_op_biases)
-
-    print("===================4===============")
-    test_accuracy, conf_matrix = sess.run(
-        # [evaluation_step, confusion_matrix],
-        [embedding_op_weights, embedding_op_biases],
-        feed_dict={
-            fingerprint_input: test_fingerprints,
-            ground_truth_input: test_ground_truth,
-            dropout_rate: 0.0
-        })
-    print("===================5===============")
+  if FLAGS.quantize:
+    fingerprint_min, fingerprint_max = input_data.get_features_range(
+        model_settings)
+    fingerprint_input = tf.quantization.fake_quant_with_min_max_args(
+        input_placeholder, fingerprint_min, fingerprint_max)
   else:
-    # Figure out the learning rates for each training phase. Since it's often
-    # effective to have high learning rates at the start of training, followed by
-    # lower levels towards the end, the number of steps and learning rates can be
-    # specified as comma-separated lists to define the rate at each stage. For
-    # example --how_many_training_steps=10000,3000 --learning_rate=0.001,0.0001
-    # will run 13,000 training loops in total, with a rate of 0.001 for the first
-    # 10,000, and 0.0001 for the final 3,000.
-    training_steps_list = list(map(int, FLAGS.how_many_training_steps.split(',')))
-    learning_rates_list = list(map(float, FLAGS.learning_rate.split(',')))
-    if len(training_steps_list) != len(learning_rates_list):
-      raise Exception(
-          '--how_many_training_steps and --learning_rate must be equal length '
-          'lists, but are %d and %d long instead' % (len(training_steps_list),
-                                                    len(learning_rates_list)))
+    fingerprint_input = input_placeholder
 
-    input_placeholder = tf.compat.v1.placeholder(
-        tf.float32, [FLAGS.batch_size, fingerprint_size], name='fingerprint_input')
-    if FLAGS.quantize:
-      fingerprint_min, fingerprint_max = input_data.get_features_range(
-          model_settings)
-      fingerprint_input = tf.quantization.fake_quant_with_min_max_args(
-          input_placeholder, fingerprint_min, fingerprint_max)
-    else:
-      fingerprint_input = input_placeholder
+  embs, dropout_rate = models.create_model(
+      fingerprint_input,
+      model_settings,
+      FLAGS.model_architecture,
+      is_training=True)
 
-    embs, dropout_rate = models.create_model(
-        fingerprint_input,
-        model_settings,
-        FLAGS.model_architecture,
-        is_training=True)
+  # Define loss and optimizer
+  #ground_truth_input = tf.compat.v1.placeholder(
+  #    tf.float32, [None, model_settings['embedding_size']], name='groundtruth_input')
 
-    # Define loss and optimizer
-    #ground_truth_input = tf.compat.v1.placeholder(
-    #    tf.float32, [None, model_settings['embedding_size']], name='groundtruth_input')
+  # Optionally we can add runtime checks to spot when NaNs or other symptoms of
+  # numerical errors start occurring during training.
+  control_dependencies = []
+  if FLAGS.check_nans:
+    checks = tf.compat.v1.add_check_numerics_ops()
+    control_dependencies = [checks]
 
-    # Optionally we can add runtime checks to spot when NaNs or other symptoms of
-    # numerical errors start occurring during training.
-    control_dependencies = []
-    if FLAGS.check_nans:
-      checks = tf.compat.v1.add_check_numerics_ops()
-      control_dependencies = [checks]
+  # For each input in batch, labels should look like: [*, +, -, -, -, -, ...]
+  # embs is batch_size x embedding_size
+  #print(f"\nembs: {embs.shape}\n")
+  pre_embs = embs
+  embs = tf.compat.v1.linalg.normalize(embs, axis=-1)[0]  # returns (tensor, norm) tuple
+  input_sample = embs[0]
 
-    # For each input in batch, labels should look like: [*, +, -, -, -, -, ...]
-    # embs is batch_size x embedding_size
-    #print(f"\nembs: {embs.shape}\n")
-    embs = tf.compat.v1.linalg.normalize(embs, axis=-1)[0]  # returns (tensor, norm) tuple
-    input_sample = embs[0]
+  if not FLAGS.inference:
     pos_samples = embs[1]   # 0 is the "input", 1 is positive
     neg_samples = embs[2:]  # rest are negative
     #print(f"\npos samples: {pos_samples.shape}\n")
@@ -221,8 +188,8 @@ def main(_):
     tf.compat.v1.losses.add_loss(
       contrastive_loss, loss_collection=tf.compat.v1.GraphKeys.LOSSES
     )
-    #print(f"\nembs: {embs}")
-    #print(f"contrastive_loss: {type(contrastive_loss)}, {contrastive_loss}\n")
+  #print(f"\nembs: {embs}")
+  #print(f"contrastive_loss: {type(contrastive_loss)}, {contrastive_loss}\n")
 
     if FLAGS.quantize:
       try:
@@ -287,12 +254,52 @@ def main(_):
     tf.io.write_graph(sess.graph_def, FLAGS.train_dir,
                       FLAGS.model_architecture + '.pbtxt')
 
-    # Save list of words.
-    #with gfile.GFile(
-    #    os.path.join(FLAGS.train_dir, FLAGS.model_architecture + '_labels.txt'),
-    #    'w') as f:
-    #  f.write('\n'.join(audio_processor.words_list))
 
+  if FLAGS.inference:
+    print("===================1===============")
+    # Load model.
+    models.load_variables_from_checkpoint(sess, FLAGS.inference_checkpoint_path)
+    print("===================2===============")
+
+    # How many .wav files to run through model.
+    test_fingerprints = audio_processor.get_data_inference(
+        wav_path="/Users/arden/Documents/Classes/EE292D/edna_mode/dataset/arden/arden0001.wav", model_settings=model_settings, 
+        background_frequency=0.0, background_volume_range=0.0, time_shift=0, sess=sess)
+    print("===================3===============")
+
+    # Get embedding vector.
+    embedding_op_weights = None
+    embedding_op_biases = None
+    for var in tf.trainable_variables():
+        # print(var.name)
+        if var.name == 'MobilenetV1/Embs/Conv2d_1c_1x1/weights:0':
+            embedding_op_weights = var
+            print(embedding_op_weights)
+        if var.name == 'MobilenetV1/Embs/Conv2d_1c_1x1/biases:0':
+            embedding_op_biases = var
+            print(embedding_op_biases)
+
+    print("===================4===============")
+
+    emb, pre_emb = sess.run(
+        [embs, pre_embs],
+        feed_dict={
+            fingerprint_input: np.expand_dims(test_fingerprints, axis=0),
+            dropout_rate: 0.0
+        })
+    # test_accuracy, conf_matrix = sess.run(
+    #     # [evaluation_step, confusion_matrix],
+    #     [embedding_op_weights, embedding_op_biases],
+    #     feed_dict={
+    #         fingerprint_input: test_fingerprints,
+    #         dropout_rate: 0.0
+    #     })
+    print(f"test_finger {test_fingerprints}")
+    print(f"emb: {emb}")
+    print(f"pemb: {pre_emb}")
+    print("===================5===============")
+
+  else:
     # Training loop.
     training_steps_max = np.sum(training_steps_list)
     for training_step in xrange(start_step, training_steps_max + 1):
@@ -405,6 +412,7 @@ def main(_):
     #tf.compat.v1.logging.warn('Confusion Matrix:\n %s' % (total_conf_matrix))
     #tf.compat.v1.logging.warn('Final test accuracy = %.1f%% (N=%d)' %
     #                          (total_accuracy * 100, set_size))
+
 
 
 if __name__ == '__main__':
