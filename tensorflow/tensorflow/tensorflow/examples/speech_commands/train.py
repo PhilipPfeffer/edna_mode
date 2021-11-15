@@ -148,27 +148,45 @@ def main(_):
   # For each input in batch, labels should look like: [*, +, -, -, -, -, ...]
   # embs is batch_size x embedding_size
   #print(f"\nembs: {embs.shape}\n")
+  embs = tf.compat.v1.linalg.normalize(embs, axis=-1)[0]  # returns (tensor, norm) tuple
   input_sample = embs[0]
   pos_samples = embs[1]   # 0 is the "input", 1 is positive
   neg_samples = embs[2:]  # rest are negative
 #  pos = tf.compat.v1.math.squared_difference(input_sample, pos_samples, name=None)  # 1d: embedding_size
 #  neg = tf.compat.v1.math.squared_difference(input_sample, neg_samples, name=None)  # 2d: batch_size-2 x embedding_size
-  pos = tf.compat.v1.math.reduce_sum(tf.compat.v1.math.multiply_no_nan(input_sample, pos_samples, name=None), axis=-1)  # 1d: embedding_size
-  neg = tf.compat.v1.math.reduce_sum(tf.compat.v1.math.multiply_no_nan(input_sample, neg_samples, name=None), axis=-1)  # 2d: batch_size-2 x embedding_size
+  #print(f"\npos samples: {pos_samples.shape}\n")
+  #print(f"\nneg samples: {neg_samples.shape}\n")
+
+  pos = tf.compat.v1.math.multiply(input_sample, pos_samples, name=None)
+  neg = tf.compat.v1.math.multiply(input_sample, neg_samples, name=None)
 
   #print(f"\npos: {pos.shape}\n")
   #print(f"\nneg: {neg.shape}\n")
 
-  num = tf.compat.v1.math.exp(-pos)  # TODO add temp?
-  denom = tf.compat.v1.math.reduce_sum(tf.compat.v1.math.exp(-neg), axis=0) + num
+  pos = tf.compat.v1.math.reduce_sum(pos, axis=-1)  # 1d: embedding_size
+  neg = tf.compat.v1.math.reduce_sum(neg, axis=-1)  # 2d: batch_size-2 x embedding_size
+
+  #print(f"\npos: {pos.shape}\n")
+  #print(f"\nneg: {neg.shape}\n")
+
+  num = tf.compat.v1.math.exp(-tf.compat.v1.math.abs(pos))  # TODO add temp?
+  denom = tf.compat.v1.math.reduce_sum(tf.compat.v1.math.exp(-tf.compat.v1.math.abs(neg))) + num
+
+  print(f"\nnum: {num.shape}\n")
+  print(f"\ndenom: {denom.shape}\n")
 
   # Create the back propagation and training evaluation machinery in the graph.
   with tf.compat.v1.name_scope('contrastive_loss'):
     #cross_entropy_mean = tf.compat.v1.contrastive_losses.sparse_softmax_cross_entropy(
     #    labels=ground_truth_input, logits=logits)
-    contrastive_loss = -tf.compat.v1.math.reduce_sum(tf.compat.v1.log(tf.compat.v1.divide(num, denom)))
+    contrastive_loss = -tf.compat.v1.math.reduce_sum(tf.compat.v1.log(tf.compat.v1.divide(num, denom))) / 5
   
-  #print(f"\ncontrastive_loss: {type(contrastive_loss)}, {contrastive_loss}\n")
+  # Add external loss
+  tf.compat.v1.losses.add_loss(
+    contrastive_loss, loss_collection=tf.compat.v1.GraphKeys.LOSSES
+  )
+  #print(f"\nembs: {embs}")
+  #print(f"contrastive_loss: {type(contrastive_loss)}, {contrastive_loss}\n")
 
   if FLAGS.quantize:
     try:
@@ -253,10 +271,14 @@ def main(_):
         FLAGS.background_volume, time_shift_samples, 'training', sess)
 
     # Run the graph with this batch of training data.
-    train_summary, loss, _, _ = sess.run(
+    train_summary, n, d, p, ne, loss, _, _= sess.run(
         [
             merged_summaries,
             # evaluation_step,
+            num,    # for debug
+            denom,  # for debug
+            pos,    # for debug
+            neg,    # for debug
             contrastive_loss,
             train_step,
             increment_global_step,
@@ -273,8 +295,7 @@ def main(_):
     #    (training_step, learning_rate_value, train_accuracy * 100,
     #     cross_entropy_value))
     tf.compat.v1.logging.debug(
-        'Step #%d: rate %f,loss %f' %
-        (training_step, learning_rate_value, loss))
+        f'Step #{training_step}: rate {learning_rate_value}, loss {loss}, n {n}, d {d}, pos {p}, neg {ne}')
     is_last_step = (training_step == training_steps_max)
     if (training_step % FLAGS.eval_step_interval) == 0 or is_last_step:
     #  tf.compat.v1.logging.info(

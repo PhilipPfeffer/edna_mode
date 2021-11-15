@@ -499,14 +499,13 @@ class AudioProcessor(object):
     person = np.random.choice(all_persons)
     all_persons.remove(person)
     input, pos = np.random.choice(self.data_index[person], size=2, replace=False)
-    for i in xrange(2, sample_count):
+    for i in xrange(0, sample_count):
       if i == 0:
         sample = input
       elif i == 1:
         sample = pos
       else:
         sample = np.random.choice(self.data_index[np.random.choice(all_persons)])
-
       # If we're time shifting, set up the offset for this sample.
       if time_shift > 0:
         time_shift_amount = np.random.randint(-time_shift, time_shift)
@@ -552,7 +551,7 @@ class AudioProcessor(object):
       summary, data_tensor = sess.run(
           [self.merged_summaries_, self.output_], feed_dict=input_dict)
       self.summary_writer_.add_summary(summary)
-      data[i + offset, :] = data_tensor.flatten()
+      data[i - offset, :] = data_tensor.flatten()
     return data
 
   def get_features_for_wav(self, wav_filename, model_settings, sess):
