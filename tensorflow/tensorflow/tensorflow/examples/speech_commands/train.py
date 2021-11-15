@@ -114,20 +114,148 @@ def main(_):
   time_shift_samples = 0  # TODO figure out what this is for...?
 
   # Run in inference mode: load existing weights, no training.
+  # Figure out the learning rates for each training phase. Since it's often
+  # effective to have high learning rates at the start of training, followed by
+  # lower levels towards the end, the number of steps and learning rates can be
+  # specified as comma-separated lists to define the rate at each stage. For
+  # example --how_many_training_steps=10000,3000 --learning_rate=0.001,0.0001
+  # will run 13,000 training loops in total, with a rate of 0.001 for the first
+  # 10,000, and 0.0001 for the final 3,000.
+  training_steps_list = list(map(int, FLAGS.how_many_training_steps.split(',')))
+  learning_rates_list = list(map(float, FLAGS.learning_rate.split(',')))
+  if len(training_steps_list) != len(learning_rates_list):
+    raise Exception(
+        '--how_many_training_steps and --learning_rate must be equal length '
+        'lists, but are %d and %d long instead' % (len(training_steps_list),
+                                                  len(learning_rates_list)))
+
+  input_placeholder = tf.compat.v1.placeholder(
+      tf.float32, [FLAGS.batch_size, fingerprint_size], name='fingerprint_input')
+  if FLAGS.quantize:
+    fingerprint_min, fingerprint_max = input_data.get_features_range(
+        model_settings)
+    fingerprint_input = tf.quantization.fake_quant_with_min_max_args(
+        input_placeholder, fingerprint_min, fingerprint_max)
+  else:
+    fingerprint_input = input_placeholder
+
+  embs, dropout_rate = models.create_model(
+      fingerprint_input,
+      model_settings,
+      FLAGS.model_architecture,
+      is_training=True)
+
+  # Define loss and optimizer
+  #ground_truth_input = tf.compat.v1.placeholder(
+  #    tf.float32, [None, model_settings['embedding_size']], name='groundtruth_input')
+
+  # Optionally we can add runtime checks to spot when NaNs or other symptoms of
+  # numerical errors start occurring during training.
+  control_dependencies = []
+  if FLAGS.check_nans:
+    checks = tf.compat.v1.add_check_numerics_ops()
+    control_dependencies = [checks]
+
+  # For each input in batch, labels should look like: [*, +, -, -, -, -, ...]
+  # embs is batch_size x embedding_size
+  #print(f"\nembs: {embs.shape}\n")
+  embs = tf.compat.v1.linalg.normalize(embs, axis=-1)[0]  # returns (tensor, norm) tuple
+  input_sample = embs[0]
+  pos_samples = embs[1]   # 0 is the "input", 1 is positive
+  neg_samples = embs[2:]  # rest are negative
+  #print(f"\npos samples: {pos_samples.shape}\n")
+  #print(f"\nneg samples: {neg_samples.shape}\n")
+
+  pos = tf.compat.v1.math.multiply(input_sample, pos_samples, name=None)
+  neg = tf.compat.v1.math.multiply(input_sample, neg_samples, name=None)
+
+  #print(f"\npos: {pos.shape}\n")
+  #print(f"\nneg: {neg.shape}\n")
+
+  pos = tf.compat.v1.math.reduce_sum(pos, axis=-1)  # 1d: embedding_size
+  neg = tf.compat.v1.math.reduce_sum(neg, axis=-1)  # 2d: batch_size-2 x embedding_size
+
+  #print(f"\npos: {pos.shape}\n")
+  #print(f"\nneg: {neg.shape}\n")
+
+  num = tf.compat.v1.math.exp(-tf.compat.v1.math.abs(pos))  # TODO add temp?
+  denom = tf.compat.v1.math.reduce_sum(tf.compat.v1.math.exp(-tf.compat.v1.math.abs(neg))) + num
+
+  #print(f"\nnum: {num.shape}\n")
+  #print(f"\ndenom: {denom.shape}\n")
+
+  # Create the back propagation and training evaluation machinery in the graph.
+  with tf.compat.v1.name_scope('contrastive_loss'):
+    #cross_entropy_mean = tf.compat.v1.contrastive_losses.sparse_softmax_cross_entropy(
+    #    labels=ground_truth_input, logits=logits)
+    contrastive_loss = -tf.compat.v1.math.reduce_sum(tf.compat.v1.log(tf.compat.v1.divide(num, denom))) / 5
+  
+  # Add external loss
+  tf.compat.v1.losses.add_loss(
+    contrastive_loss, loss_collection=tf.compat.v1.GraphKeys.LOSSES
+  )
+  #print(f"\nembs: {embs}")
+  #print(f"contrastive_loss: {type(contrastive_loss)}, {contrastive_loss}\n")
+
+  if FLAGS.quantize:
+    try:
+      tf.contrib.quantize.create_training_graph(quant_delay=0)
+    except AttributeError as e:
+      msg = e.args[0]
+      msg += ('\n\n The --quantize option still requires contrib, which is not '
+              'part of TensorFlow 2.0. Please install a previous version:'
+              '\n    `pip install tensorflow<=1.15`')
+      e.args = (msg,)
+      raise e
+
+  with tf.compat.v1.name_scope('train'), tf.control_dependencies(
+      control_dependencies):
+    learning_rate_input = tf.compat.v1.placeholder(
+        tf.float32, [], name='learning_rate_input')
+    if FLAGS.optimizer == 'gradient_descent':
+      train_step = tf.compat.v1.train.GradientDescentOptimizer(
+          learning_rate_input).minimize(contrastive_loss)
+    elif FLAGS.optimizer == 'momentum':
+      train_step = tf.compat.v1.train.MomentumOptimizer(
+          learning_rate_input, .9,
+          use_nesterov=True).minimize(contrastive_loss)
+    else:
+      raise Exception('Invalid Optimizer')
+  #predicted_indices = tf.round(input=, axis=1)
+  #correct_prediction = tf.equal(predicted_indices, ground_truth_input)
+  #confusion_matrix = tf.math.confusion_matrix(labels=ground_truth_input,
+  #                                            predictions=predicted_indices,
+  #                                            num_classes=label_count)
+  #evaluation_step = tf.reduce_mean(input_tensor=tf.cast(correct_prediction,
+  #                                                      tf.float32))
+  with tf.compat.v1.get_default_graph().name_scope('eval'):
+    tf.compat.v1.summary.scalar('contrastive_loss', contrastive_loss)
+    tf.compat.v1.summary.scalar('pos_similarity', pos)
+    tf.compat.v1.summary.scalar('neg_mean_similarity', tf.compat.v1.math.reduce_sum(neg) / (FLAGS.batch_size - 2))
+  #  tf.compat.v1.summary.scalar('accuracy', evaluation_step)
+
+  global_step = tf.compat.v1.train.get_or_create_global_step()
+  increment_global_step = tf.compat.v1.assign(global_step, global_step + 1)
+
+  saver = tf.compat.v1.train.Saver(tf.compat.v1.global_variables())
+
+  # Merge all the summaries and write them out to /tmp/retrain_logs (by default)
+  merged_summaries = tf.compat.v1.summary.merge_all(scope='eval')
+  train_writer = tf.compat.v1.summary.FileWriter(FLAGS.summaries_dir + '/train',
+                                                sess.graph)
+  validation_writer = tf.compat.v1.summary.FileWriter(
+      FLAGS.summaries_dir + '/validation')
+
+  tf.compat.v1.global_variables_initializer().run()
+
+  start_step = 1
+
   if FLAGS.inference:
+    ################################################################
+    #                           INFERENCE
+    ################################################################
     print("===================1===============")
     # Load model.
-    training_steps_list = list(map(int, FLAGS.how_many_training_steps.split(',')))
-    learning_rates_list = list(map(float, FLAGS.learning_rate.split(',')))
-    if len(training_steps_list) != len(learning_rates_list):
-      raise Exception(
-          '--how_many_training_steps and --learning_rate must be equal length '
-          'lists, but are %d and %d long instead' % (len(training_steps_list),
-                                                    len(learning_rates_list)))
-
-    input_placeholder = tf.compat.v1.placeholder(
-        tf.float32, [FLAGS.batch_size, fingerprint_size], name='fingerprint_input')
-    tf.compat.v1.global_variables_initializer().run()
     models.load_variables_from_checkpoint(sess, FLAGS.inference_checkpoint_path)
     print("===================2===============")
 
@@ -142,7 +270,7 @@ def main(_):
     embedding_op_weights = None
     embedding_op_biases = None
     for var in tf.trainable_variables():
-        # print(var.name)
+        print(var.name)
         if var.name == 'MobilenetV1/Embs/Conv2d_1c_1x1/weights:0':
             embedding_op_weights = var
             print(embedding_op_weights)
@@ -151,7 +279,7 @@ def main(_):
             print(embedding_op_biases)
 
     print("===================4===============")
-    test_accuracy, conf_matrix = sess.run(
+    embed_w, embed_b = sess.run(
         # [evaluation_step, confusion_matrix],
         [embedding_op_weights, embedding_op_biases],
         feed_dict={
@@ -161,142 +289,9 @@ def main(_):
         })
     print("===================5===============")
   else:
-    # Figure out the learning rates for each training phase. Since it's often
-    # effective to have high learning rates at the start of training, followed by
-    # lower levels towards the end, the number of steps and learning rates can be
-    # specified as comma-separated lists to define the rate at each stage. For
-    # example --how_many_training_steps=10000,3000 --learning_rate=0.001,0.0001
-    # will run 13,000 training loops in total, with a rate of 0.001 for the first
-    # 10,000, and 0.0001 for the final 3,000.
-    training_steps_list = list(map(int, FLAGS.how_many_training_steps.split(',')))
-    learning_rates_list = list(map(float, FLAGS.learning_rate.split(',')))
-    if len(training_steps_list) != len(learning_rates_list):
-      raise Exception(
-          '--how_many_training_steps and --learning_rate must be equal length '
-          'lists, but are %d and %d long instead' % (len(training_steps_list),
-                                                    len(learning_rates_list)))
-
-    input_placeholder = tf.compat.v1.placeholder(
-        tf.float32, [FLAGS.batch_size, fingerprint_size], name='fingerprint_input')
-    if FLAGS.quantize:
-      fingerprint_min, fingerprint_max = input_data.get_features_range(
-          model_settings)
-      fingerprint_input = tf.quantization.fake_quant_with_min_max_args(
-          input_placeholder, fingerprint_min, fingerprint_max)
-    else:
-      fingerprint_input = input_placeholder
-
-    embs, dropout_rate = models.create_model(
-        fingerprint_input,
-        model_settings,
-        FLAGS.model_architecture,
-        is_training=True)
-
-    # Define loss and optimizer
-    #ground_truth_input = tf.compat.v1.placeholder(
-    #    tf.float32, [None, model_settings['embedding_size']], name='groundtruth_input')
-
-    # Optionally we can add runtime checks to spot when NaNs or other symptoms of
-    # numerical errors start occurring during training.
-    control_dependencies = []
-    if FLAGS.check_nans:
-      checks = tf.compat.v1.add_check_numerics_ops()
-      control_dependencies = [checks]
-
-    # For each input in batch, labels should look like: [*, +, -, -, -, -, ...]
-    # embs is batch_size x embedding_size
-    #print(f"\nembs: {embs.shape}\n")
-    embs = tf.compat.v1.linalg.normalize(embs, axis=-1)[0]  # returns (tensor, norm) tuple
-    input_sample = embs[0]
-    pos_samples = embs[1]   # 0 is the "input", 1 is positive
-    neg_samples = embs[2:]  # rest are negative
-    #print(f"\npos samples: {pos_samples.shape}\n")
-    #print(f"\nneg samples: {neg_samples.shape}\n")
-
-    pos = tf.compat.v1.math.multiply(input_sample, pos_samples, name=None)
-    neg = tf.compat.v1.math.multiply(input_sample, neg_samples, name=None)
-
-    #print(f"\npos: {pos.shape}\n")
-    #print(f"\nneg: {neg.shape}\n")
-
-    pos = tf.compat.v1.math.reduce_sum(pos, axis=-1)  # 1d: embedding_size
-    neg = tf.compat.v1.math.reduce_sum(neg, axis=-1)  # 2d: batch_size-2 x embedding_size
-
-    #print(f"\npos: {pos.shape}\n")
-    #print(f"\nneg: {neg.shape}\n")
-
-    num = tf.compat.v1.math.exp(-tf.compat.v1.math.abs(pos))  # TODO add temp?
-    denom = tf.compat.v1.math.reduce_sum(tf.compat.v1.math.exp(-tf.compat.v1.math.abs(neg))) + num
-
-    #print(f"\nnum: {num.shape}\n")
-    #print(f"\ndenom: {denom.shape}\n")
-
-    # Create the back propagation and training evaluation machinery in the graph.
-    with tf.compat.v1.name_scope('contrastive_loss'):
-      #cross_entropy_mean = tf.compat.v1.contrastive_losses.sparse_softmax_cross_entropy(
-      #    labels=ground_truth_input, logits=logits)
-      contrastive_loss = -tf.compat.v1.math.reduce_sum(tf.compat.v1.log(tf.compat.v1.divide(num, denom))) / 5
-    
-    # Add external loss
-    tf.compat.v1.losses.add_loss(
-      contrastive_loss, loss_collection=tf.compat.v1.GraphKeys.LOSSES
-    )
-    #print(f"\nembs: {embs}")
-    #print(f"contrastive_loss: {type(contrastive_loss)}, {contrastive_loss}\n")
-
-    if FLAGS.quantize:
-      try:
-        tf.contrib.quantize.create_training_graph(quant_delay=0)
-      except AttributeError as e:
-        msg = e.args[0]
-        msg += ('\n\n The --quantize option still requires contrib, which is not '
-                'part of TensorFlow 2.0. Please install a previous version:'
-                '\n    `pip install tensorflow<=1.15`')
-        e.args = (msg,)
-        raise e
-
-    with tf.compat.v1.name_scope('train'), tf.control_dependencies(
-        control_dependencies):
-      learning_rate_input = tf.compat.v1.placeholder(
-          tf.float32, [], name='learning_rate_input')
-      if FLAGS.optimizer == 'gradient_descent':
-        train_step = tf.compat.v1.train.GradientDescentOptimizer(
-            learning_rate_input).minimize(contrastive_loss)
-      elif FLAGS.optimizer == 'momentum':
-        train_step = tf.compat.v1.train.MomentumOptimizer(
-            learning_rate_input, .9,
-            use_nesterov=True).minimize(contrastive_loss)
-      else:
-        raise Exception('Invalid Optimizer')
-    #predicted_indices = tf.round(input=, axis=1)
-    #correct_prediction = tf.equal(predicted_indices, ground_truth_input)
-    #confusion_matrix = tf.math.confusion_matrix(labels=ground_truth_input,
-    #                                            predictions=predicted_indices,
-    #                                            num_classes=label_count)
-    #evaluation_step = tf.reduce_mean(input_tensor=tf.cast(correct_prediction,
-    #                                                      tf.float32))
-    with tf.compat.v1.get_default_graph().name_scope('eval'):
-      tf.compat.v1.summary.scalar('contrastive_loss', contrastive_loss)
-      tf.compat.v1.summary.scalar('pos_similarity', pos)
-      tf.compat.v1.summary.scalar('neg_mean_similarity', tf.compat.v1.math.reduce_sum(neg) / (FLAGS.batch_size - 2))
-    #  tf.compat.v1.summary.scalar('accuracy', evaluation_step)
-
-    global_step = tf.compat.v1.train.get_or_create_global_step()
-    increment_global_step = tf.compat.v1.assign(global_step, global_step + 1)
-
-    saver = tf.compat.v1.train.Saver(tf.compat.v1.global_variables())
-
-    # Merge all the summaries and write them out to /tmp/retrain_logs (by default)
-    merged_summaries = tf.compat.v1.summary.merge_all(scope='eval')
-    train_writer = tf.compat.v1.summary.FileWriter(FLAGS.summaries_dir + '/train',
-                                                  sess.graph)
-    validation_writer = tf.compat.v1.summary.FileWriter(
-        FLAGS.summaries_dir + '/validation')
-
-    tf.compat.v1.global_variables_initializer().run()
-
-    start_step = 1
-
+    ################################################################
+    #                           TRAIN
+    ################################################################
     if FLAGS.start_checkpoint:
       models.load_variables_from_checkpoint(sess, FLAGS.start_checkpoint)
       start_step = global_step.eval(session=sess)
