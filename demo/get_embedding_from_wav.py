@@ -1,4 +1,5 @@
 # TODO(phil)
+import CONSTANTS
 import numpy as np
 
 def get_embedding_from_wav(filename: str) -> np.array:
@@ -6,8 +7,8 @@ def get_embedding_from_wav(filename: str) -> np.array:
 
 if __name__ == "__main__":
     # Demo .wav test
-    demo_wav = "demo_wav_path"  # TODO(phil): add demo wav
-    embedding = get_embedding_from_wav(demo_wav)
+    embedding = get_embedding_from_wav(CONSTANTS.DEMO_WAV_PATH)
+    assert(embedding != np.zeros((1,100)))
     print(embedding)
 
     ################################################################################

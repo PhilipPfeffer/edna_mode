@@ -4,8 +4,8 @@ import CONSTANTS
 import get_embedding_from_wav
 
 if __name__ == "__main__":
+    # TODO: Write a simple test that checks implementation.
     pass
-
 
     ################################################################################
     #                           Inference of new, unseen example
