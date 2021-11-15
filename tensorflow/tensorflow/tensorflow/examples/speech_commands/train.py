@@ -137,7 +137,7 @@ def main(_):
       is_training=True)
 
   # Define loss and optimizer
-  #ground_truth_input = tf.compat.v1.placeholder(
+  # ground_truth_input = tf.compat.v1.placeholder(
   #    tf.float32, [None, model_settings['embedding_size']], name='groundtruth_input')
 
   # Optionally we can add runtime checks to spot when NaNs or other symptoms of
@@ -149,7 +149,12 @@ def main(_):
 
   # For each input in batch, labels should look like: [*, +, -, -, -, -, ...]
   # embs is batch_size x embedding_size
+<<<<<<< HEAD
   #print(f"\nembs: {embs.shape}\n")
+=======
+  # print(f"\nembs: {embs.shape}\n")
+  pre_embs = embs
+>>>>>>> b78e6c76bada00ce3009b81bb3fa1f2dba662e03
   embs = tf.compat.v1.linalg.normalize(embs, axis=-1)[0]  # returns (tensor, norm) tuple
   input_sample = embs[0]
 
@@ -255,18 +260,20 @@ def main(_):
 
 
   if FLAGS.inference:
-    print("===================1===============")
     # Load model.
     models.load_variables_from_checkpoint(sess, FLAGS.inference_checkpoint_path)
-    print("===================2===============")
 
     # How many .wav files to run through model.
     test_fingerprints = audio_processor.get_data_inference(
+<<<<<<< HEAD
         wav_path=FLAGS.query_file, model_settings=model_settings, 
+=======
+        wav_path="/Users/philipmateopfeffer/Desktop/stanford/Y5Q1/edna_mode/demo/phil_demo.wav", model_settings=model_settings, 
+>>>>>>> b78e6c76bada00ce3009b81bb3fa1f2dba662e03
         background_frequency=0.0, background_volume_range=0.0, time_shift=0, sess=sess)
-    print("===================3===============")
 
     # Get embedding vector.
+<<<<<<< HEAD
     embedding_op_weights = None
     embedding_op_biases = None
     for var in tf.compat.v1.trainable_variables():
@@ -282,15 +289,28 @@ def main(_):
 
     emb = sess.run(
         [embs],
+=======
+    emb, pre_emb = sess.run(
+        [embs, pre_embs],
+>>>>>>> b78e6c76bada00ce3009b81bb3fa1f2dba662e03
         feed_dict={
             fingerprint_input: np.expand_dims(test_fingerprints, axis=0),
             dropout_rate: 1.0
         })
+<<<<<<< HEAD
 
     print(f"emb: {emb}")
     print("===================5===============")
 
+=======
+>>>>>>> b78e6c76bada00ce3009b81bb3fa1f2dba662e03
   else:
+    # Save the model checkpoint with no training.
+    checkpoint_path = os.path.join(FLAGS.train_dir,
+                                  FLAGS.model_architecture + '.ckpt')
+    tf.compat.v1.logging.info('Saving to "%s-%d"', checkpoint_path, 0)
+    saver.save(sess, checkpoint_path, global_step=0)
+
     # Training loop.
     training_steps_max = np.sum(training_steps_list)
     for training_step in xrange(start_step, training_steps_max + 1):
@@ -332,7 +352,12 @@ def main(_):
       #    (training_step, learning_rate_value, train_accuracy * 100,
       #     cross_entropy_value))
       tf.compat.v1.logging.debug(
+<<<<<<< HEAD
           f'Step #{training_step}: rate {learning_rate_value}, loss {loss}, n {n}, d {d}, pos {p}, neg {ne}, embs {emb}')
+=======
+          f'Step #{training_step}: rate {learning_rate_value}, loss {loss}, n {n}, d {d}, pos {p}, neg {ne}')
+      
+>>>>>>> b78e6c76bada00ce3009b81bb3fa1f2dba662e03
       is_last_step = (training_step == training_steps_max)
       if (training_step % FLAGS.eval_step_interval) == 0 or is_last_step:
       #  tf.compat.v1.logging.info(
