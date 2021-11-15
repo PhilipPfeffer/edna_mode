@@ -552,7 +552,7 @@ class AudioProcessor(object):
       summary, data_tensor = sess.run(
           [self.merged_summaries_, self.output_], feed_dict=input_dict)
       self.summary_writer_.add_summary(summary)
-      data[i - offset, :] = data_tensor.flatten()
+      data[i + offset, :] = data_tensor.flatten()
     return data
 
   def get_features_for_wav(self, wav_filename, model_settings, sess):

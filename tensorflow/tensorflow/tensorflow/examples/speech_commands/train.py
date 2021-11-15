@@ -101,7 +101,8 @@ def main(_):
       FLAGS.testing_percentage, model_settings, FLAGS.summaries_dir)
   fingerprint_size = model_settings['fingerprint_size']
   label_count = model_settings['label_count']
-  time_shift_samples = int((FLAGS.time_shift_ms * FLAGS.sample_rate) / 1000)
+  #time_shift_samples = int((FLAGS.time_shift_ms * FLAGS.sample_rate) / 1000)
+  time_shift_samples = 0  # TODO figure out what this is for...?
   # Figure out the learning rates for each training phase. Since it's often
   # effective to have high learning rates at the start of training, followed by
   # lower levels towards the end, the number of steps and learning rates can be
@@ -156,13 +157,13 @@ def main(_):
   #print(f"\nneg: {neg.shape}\n")
 
   num = tf.compat.v1.math.exp(-pos)  # TODO add temp?
-  denom = tf.compat.v1.math.reduce_sum(tf.compat.v1.math.exp(-neg), axis=0)
+  denom = tf.compat.v1.math.reduce_sum(tf.compat.v1.math.exp(-neg), axis=0) + num
 
   # Create the back propagation and training evaluation machinery in the graph.
   with tf.compat.v1.name_scope('contrastive_loss'):
     #cross_entropy_mean = tf.compat.v1.contrastive_losses.sparse_softmax_cross_entropy(
     #    labels=ground_truth_input, logits=logits)
-    contrastive_loss = tf.compat.v1.math.reduce_sum(tf.compat.v1.divide(num, denom))
+    contrastive_loss = -tf.compat.v1.math.reduce_sum(tf.compat.v1.log(tf.compat.v1.divide(num, denom)))
   
   #print(f"\ncontrastive_loss: {type(contrastive_loss)}, {contrastive_loss}\n")
 
@@ -280,13 +281,15 @@ def main(_):
       tf.compat.v1.logging.info(
         'Step #%d: rate %f,loss %f' %
         (training_step, learning_rate_value, loss))
-      set_size = audio_processor.set_size('validation')
+
+      # VALIDATION???
+      set_size = audio_processor.set_size()
       #total_accuracy = 0
       #total_conf_matrix = None
-      for i in xrange(0, set_size, FLAGS.batch_size):
-        validation_fingerprints, validation_ground_truth = (
-            audio_processor.get_data(FLAGS.batch_size, i, model_settings, 0.0,
-                                     0.0, 0, 'validation', sess))
+     #for i in xrange(0, set_size, FLAGS.batch_size):
+      #  validation_fingerprints = (
+      #      audio_processor.get_data(FLAGS.batch_size, i, model_settings, 0.0,
+      #                               0.0, 0, 'validation', sess))
         # Run a validation step and capture training summaries for TensorBoard
         # with the `merged` op.
        # validation_summary, validation_accuracy, conf_matrix = sess.run(
@@ -297,7 +300,7 @@ def main(_):
        #         dropout_rate: 0.0
        #     })
        # validation_writer.add_summary(validation_summary, training_step)
-        batch_size = min(FLAGS.batch_size, set_size - i)
+       # batch_size = min(FLAGS.batch_size, set_size - i)
        # total_accuracy += (validation_accuracy * batch_size) / set_size
        # if total_conf_matrix is None:
        #   total_conf_matrix = conf_matrix
@@ -316,13 +319,14 @@ def main(_):
                                 training_step)
       saver.save(sess, checkpoint_path, global_step=training_step)
 
-  set_size = audio_processor.set_size('testing')
-  tf.compat.v1.logging.info('set_size=%d', set_size)
+  # TESTING CODE????
+  #set_size = audio_processor.set_size()
+  #tf.compat.v1.logging.info('set_size=%d', set_size)
   #total_accuracy = 0
-  total_conf_matrix = None
-  for i in xrange(0, set_size, FLAGS.batch_size):
-    test_fingerprints, test_ground_truth = audio_processor.get_data(
-        FLAGS.batch_size, i, model_settings, 0.0, 0.0, 0, 'testing', sess)
+  #total_conf_matrix = None
+  #for i in xrange(0, set_size, FLAGS.batch_size):
+  #  test_fingerprints = audio_processor.get_data(
+  #      FLAGS.batch_size, i, model_settings, 0.0, 0.0, 0, 'testing', sess)
     #test_accuracy, conf_matrix = sess.run(
     #    [evaluation_step, confusion_matrix],
     #    feed_dict={
@@ -330,7 +334,7 @@ def main(_):
     #        ground_truth_input: test_ground_truth,
     #        dropout_rate: 0.0
     #    })
-    batch_size = min(FLAGS.batch_size, set_size - i)
+    #batch_size = min(FLAGS.batch_size, set_size - i)
     #total_accuracy += (test_accuracy * batch_size) / set_size
     #if total_conf_matrix is None:
     #  total_conf_matrix = conf_matrix
