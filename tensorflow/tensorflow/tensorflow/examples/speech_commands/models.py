@@ -149,7 +149,7 @@ def create_model(fingerprint_input, model_settings, model_architecture,
     raise Exception('model_architecture argument "' + model_architecture +
                     '" not recognized, should be one of "single_fc", "conv",' +
                     ' "low_latency_conv, "low_latency_svdf",' +
-                    ' "tiny_conv", or "tiny_embedding_conv"')
+                    ' "tiny_conv", "tiny_embedding_conv", or "mobilenet_embedding"')
 
 
 def load_variables_from_checkpoint(sess, start_checkpoint):
