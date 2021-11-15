@@ -153,8 +153,8 @@ def main(_):
   neg_samples = embs[2:]  # rest are negative
 #  pos = tf.compat.v1.math.squared_difference(input_sample, pos_samples, name=None)  # 1d: embedding_size
 #  neg = tf.compat.v1.math.squared_difference(input_sample, neg_samples, name=None)  # 2d: batch_size-2 x embedding_size
-  pos = tf.compat.v1.math.cumsum(tf.compat.v1.math.multiply_no_nan(input_sample, pos_samples, name=None))  # 1d: embedding_size
-  neg = tf.compat.v1.math.cumsum(tf.compat.v1.math.multiply_no_nan(input_sample, neg_samples, name=None))  # 2d: batch_size-2 x embedding_size
+  pos = tf.compat.v1.math.reduce_sum(tf.compat.v1.math.multiply_no_nan(input_sample, pos_samples, name=None))  # 1d: embedding_size
+  neg = tf.compat.v1.math.reduce_sum(tf.compat.v1.math.multiply_no_nan(input_sample, neg_samples, name=None))  # 2d: batch_size-2 x embedding_size
 
   #print(f"\npos: {pos.shape}\n")
   #print(f"\nneg: {neg.shape}\n")
