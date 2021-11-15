@@ -950,6 +950,7 @@ def create_mobilenet_embedding_model(fingerprint_input, model_settings,
     TensorFlow node outputting logits results, and optionally a dropout
     placeholder.
   """
+  dropout_rate = 0
   if is_training:
     dropout_rate = tf.compat.v1.placeholder(tf.float32, name='dropout_rate')
   input_frequency_size = model_settings['fingerprint_width']
