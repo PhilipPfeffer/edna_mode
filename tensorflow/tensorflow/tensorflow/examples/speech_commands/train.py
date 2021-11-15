@@ -80,6 +80,15 @@ from tensorflow.python.platform import gfile
 
 FLAGS = None
 
+# # Let's read our pbtxt file into a Graph protobuf
+# f = open("/tmp/storage/graph_protobuf.pbtxt", "r")
+# graph_protobuf = text_format.Parse(f.read(), tf.GraphDef())
+
+# # Import the graph protobuf into our new graph.
+# graph_clone = tf.Graph()
+# with graph_clone.as_default():
+#     tf.import_graph_def(graph_def=graph_protobuf, name="")
+
 def main(_):
   # Set the verbosity based on flags (default is INFO, so we see all messages)
   tf.compat.v1.logging.set_verbosity(FLAGS.verbosity)
@@ -108,6 +117,17 @@ def main(_):
   if FLAGS.inference:
     print("===================1===============")
     # Load model.
+    training_steps_list = list(map(int, FLAGS.how_many_training_steps.split(',')))
+    learning_rates_list = list(map(float, FLAGS.learning_rate.split(',')))
+    if len(training_steps_list) != len(learning_rates_list):
+      raise Exception(
+          '--how_many_training_steps and --learning_rate must be equal length '
+          'lists, but are %d and %d long instead' % (len(training_steps_list),
+                                                    len(learning_rates_list)))
+
+    input_placeholder = tf.compat.v1.placeholder(
+        tf.float32, [FLAGS.batch_size, fingerprint_size], name='fingerprint_input')
+    tf.compat.v1.global_variables_initializer().run()
     models.load_variables_from_checkpoint(sess, FLAGS.inference_checkpoint_path)
     print("===================2===============")
 
