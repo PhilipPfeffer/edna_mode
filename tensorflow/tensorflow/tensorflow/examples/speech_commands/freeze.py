@@ -250,6 +250,18 @@ def main(_):
     raise Exception('Unknown save format "%s" (should be "graph_def" or'
                     ' "saved_model")' % (FLAGS.save_format))
 
+  # Convert to TFLite model
+  if FLAGS.convert_tflite and FLAGS.save_format == 'saved_model':
+    with tf.Session() as sess: #with sess:
+      float_converter = tf.lite.TFLiteConverter.from_saved_model(FLAGS.output_file)
+      float_tflite_model = float_converter.convert()
+      float_tflite_model_size = open("float_model.tflite", "wb").write(float_tflite_model)
+      # converter = tf.lite.TFLiteConverter.from_saved_model(FLAGS.output_file)
+      # converter.optimizations = [tf.lite.Optimize.DEFAULT]
+      # converter.inference_input_type = tf.lite.constants.INT8
+      # converter.inference_output_type = tf.lite.constants.INT8
+      print("Float model is %d bytes" % float_tflite_model_size)
+      print("yay")
 
 if __name__ == '__main__':
   parser = argparse.ArgumentParser()
@@ -316,6 +328,11 @@ if __name__ == '__main__':
       type=str,
       default='graph_def',
       help='How to save the result. Can be "graph_def" or "saved_model"')
+  parser.add_argument(
+    '--convert_tflite',
+    type=bool,
+    default=False,
+    help='Enable to convert to TFlite')
   parser.add_argument(
     '--embedding_size',
     type=int,
