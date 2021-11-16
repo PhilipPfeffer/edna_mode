@@ -80,6 +80,15 @@ from tensorflow.python.platform import gfile
 
 FLAGS = None
 
+# # Let's read our pbtxt file into a Graph protobuf
+# f = open("/tmp/storage/graph_protobuf.pbtxt", "r")
+# graph_protobuf = text_format.Parse(f.read(), tf.GraphDef())
+
+# # Import the graph protobuf into our new graph.
+# graph_clone = tf.Graph()
+# with graph_clone.as_default():
+#     tf.import_graph_def(graph_def=graph_protobuf, name="")
+
 def main(_):
   # Set the verbosity based on flags (default is INFO, so we see all messages)
   tf.compat.v1.logging.set_verbosity(FLAGS.verbosity)
