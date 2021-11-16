@@ -146,7 +146,7 @@ def main(_):
       is_training=True)
 
   # Define loss and optimizer
-  #ground_truth_input = tf.compat.v1.placeholder(
+  # ground_truth_input = tf.compat.v1.placeholder(
   #    tf.float32, [None, model_settings['embedding_size']], name='groundtruth_input')
 
   # Optionally we can add runtime checks to spot when NaNs or other symptoms of
@@ -159,7 +159,6 @@ def main(_):
   # For each input in batch, labels should look like: [*, +, -, -, -, -, ...]
   # embs is batch_size x embedding_size
   #print(f"\nembs: {embs.shape}\n")
-  pre_embs = embs
   embs = tf.compat.v1.linalg.normalize(embs, axis=-1)[0]  # returns (tensor, norm) tuple
   input_sample = embs[0]
 
@@ -265,50 +264,29 @@ def main(_):
 
 
   if FLAGS.inference:
-    print("===================1===============")
     # Load model.
     models.load_variables_from_checkpoint(sess, FLAGS.inference_checkpoint_path)
-    print("===================2===============")
 
     # How many .wav files to run through model.
     test_fingerprints = audio_processor.get_data_inference(
-        wav_path="/Users/arden/Documents/Classes/EE292D/edna_mode/dataset/arden/arden0001.wav", model_settings=model_settings, 
+        wav_path=FLAGS.query_file, model_settings=model_settings, 
         background_frequency=0.0, background_volume_range=0.0, time_shift=0, sess=sess)
-    print("===================3===============")
 
-    # Get embedding vector.
-    embedding_op_weights = None
-    embedding_op_biases = None
-    for var in tf.trainable_variables():
-        # print(var.name)
-        if var.name == 'MobilenetV1/Embs/Conv2d_1c_1x1/weights:0':
-            embedding_op_weights = var
-            print(embedding_op_weights)
-        if var.name == 'MobilenetV1/Embs/Conv2d_1c_1x1/biases:0':
-            embedding_op_biases = var
-            print(embedding_op_biases)
-
-    print("===================4===============")
-
-    emb, pre_emb = sess.run(
-        [embs, pre_embs],
+    emb = sess.run(
+        [embs],
         feed_dict={
             fingerprint_input: np.expand_dims(test_fingerprints, axis=0),
-            dropout_rate: 0.0
+            dropout_rate: 1.0
         })
-    # test_accuracy, conf_matrix = sess.run(
-    #     # [evaluation_step, confusion_matrix],
-    #     [embedding_op_weights, embedding_op_biases],
-    #     feed_dict={
-    #         fingerprint_input: test_fingerprints,
-    #         dropout_rate: 0.0
-    #     })
-    print(f"test_finger {test_fingerprints}")
-    print(f"emb: {emb}")
-    print(f"pemb: {pre_emb}")
-    print("===================5===============")
-
+    
+    print("output_embedding: ", emb) 
   else:
+    # Save the model checkpoint with no training.
+    checkpoint_path = os.path.join(FLAGS.train_dir,
+                                  FLAGS.model_architecture + '.ckpt')
+    tf.compat.v1.logging.info('Saving to "%s-%d"', checkpoint_path, 0)
+    saver.save(sess, checkpoint_path, global_step=0)
+
     # Training loop.
     training_steps_max = np.sum(training_steps_list)
     for training_step in xrange(start_step, training_steps_max + 1):
@@ -325,7 +303,7 @@ def main(_):
           FLAGS.background_volume, time_shift_samples, 'training', sess)
 
       # Run the graph with this batch of training data.
-      train_summary, n, d, p, ne, loss, _, _= sess.run(
+      train_summary, n, d, p, ne, emb, loss, _, _= sess.run(
           [
               merged_summaries,
               # evaluation_step,
@@ -333,6 +311,7 @@ def main(_):
               denom,  # for debug
               pos,    # for debug
               neg,    # for debug
+              embs,
               contrastive_loss,
               train_step,
               increment_global_step,
@@ -349,7 +328,7 @@ def main(_):
       #    (training_step, learning_rate_value, train_accuracy * 100,
       #     cross_entropy_value))
       tf.compat.v1.logging.debug(
-          f'Step #{training_step}: rate {learning_rate_value}, loss {loss}, n {n}, d {d}, pos {p}, neg {ne}')
+          f'Step #{training_step}: rate {learning_rate_value}, loss {loss}, n {n}, d {d}, pos {p}, neg {ne}, embs {emb}')
       is_last_step = (training_step == training_steps_max)
       if (training_step % FLAGS.eval_step_interval) == 0 or is_last_step:
       #  tf.compat.v1.logging.info(
@@ -427,14 +406,19 @@ def main(_):
 if __name__ == '__main__':
   parser = argparse.ArgumentParser()
   parser.add_argument(
-    '--inference',
-    default=False,
-    help='Run in inference mode: (do not train model).')
+      '--inference',
+      default=False,
+      help='Run in inference mode: (do not train model).')
   parser.add_argument(
-    '--inference_checkpoint_path',
-    type=str,
-    default='',
-    help='Load model paramenters for inference.')
+      '--inference_checkpoint_path',
+      type=str,
+      default='',
+      help='Load model paramenters for inference.')
+  parser.add_argument(
+      '--query_file',
+      type=str,
+      default='',
+      help='Generate embedding for .wav file.')
   parser.add_argument(
       '--data_url',
       type=str,
