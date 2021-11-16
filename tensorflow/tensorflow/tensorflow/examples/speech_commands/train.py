@@ -263,18 +263,14 @@ def main(_):
         wav_path=FLAGS.query_file, model_settings=model_settings, 
         background_frequency=0.0, background_volume_range=0.0, time_shift=0, sess=sess)
 
-    print("===================4===============")
-
     emb = sess.run(
         [embs],
         feed_dict={
             fingerprint_input: np.expand_dims(test_fingerprints, axis=0),
             dropout_rate: 1.0
         })
-
-    print(f"emb: {emb}")
-    print("===================5===============")
-
+    
+    print("output_embedding: ", emb) 
   else:
     # Save the model checkpoint with no training.
     checkpoint_path = os.path.join(FLAGS.train_dir,

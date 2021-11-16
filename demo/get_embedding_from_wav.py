@@ -6,20 +6,23 @@
 import CONSTANTS
 import numpy as np
 import os
+import subprocess
 
 def get_embedding_from_wav(filepath: str) -> np.array:
-    # Load .wav file from local filesystem. (or on a held out wav)
+    command = f"python {CONSTANTS.REPO_FILEPATH}/tensorflow/tensorflow/tensorflow/examples/speech_commands/train.py"
+    #  \
+    #     --model_architecture=mobilenet_embedding \
+    #     --embedding_size=2 \
+    #     --data_dir=/Users/philipmateopfeffer/Desktop/stanford/Y5Q1/edna_mode/dataset \
+    #     --batch_size 5 \
+    #     --inference=True \
+    #     --inference_checkpoint_path=/tmp/speech_commands_train/mobilenet_embedding.ckpt-0) \
+    #     --query_file={filepath}"
 
-    # Create spectogram from .wav.
-
-    # Model (tentative):
-        # Define model (same as slim/train.py model).
-        # Load .pb file of weights.
-
-    # Run spectogram through model -> embedding Tensor 
-
+    result = subprocess.check_output(command, shell=True)
+    
     # Return embeddings
-    return np.zeros((1,100))
+    return result
 
 if __name__ == "__main__":
     # Demo .wav test
