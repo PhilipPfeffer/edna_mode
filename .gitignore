@@ -1,4 +1,5 @@
 .DS_Store
 .DS_Store?
 env
-tensorflow/tensorflow/tensorflow/examples/speech_commands/__pycache__/input_data.cpython-37.pyc/
+tensorflow/tensorflow/tensorflow/examples/speech_commands/__pycache__/
+slim/
