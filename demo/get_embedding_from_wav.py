@@ -4,6 +4,7 @@
 
 # TODO(phil)
 import CONSTANTS
+from demo.CONSTANTS import MODEL_CHECKPOINT_PATH
 import numpy as np
 import os
 import subprocess
@@ -11,10 +12,10 @@ import subprocess
 def get_embedding_from_wav(filepath: str) -> np.array:
     command = f"python {CONSTANTS.REPO_FILEPATH}tensorflow/tensorflow/tensorflow/examples/speech_commands/train.py\
         --model_architecture=mobilenet_embedding \
-        --data_dir=/Users/philipmateopfeffer/Desktop/stanford/Y5Q1/edna_mode/dataset \
+        --data_dir={CONSTANTS.REPO_FILEPATH}/dataset \
         --batch_size 5 \
         --inference=True \
-        --inference_checkpoint_path=/tmp/speech_commands_train/mobilenet_embedding.ckpt-0 \
+        --inference_checkpoint_path={MODEL_CHECKPOINT_PATH} \
         --embedding_size=2 \
         --query_file={filepath}"
 
