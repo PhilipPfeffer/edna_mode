@@ -12,7 +12,7 @@ import argparse
 def similarity(a, b):
     a_norm = np.array(a) * 1/float(np.linalg.norm(a))
     b_norm = np.array(b) * 1/float(np.linalg.norm(b))
-    return np.abs(a_norm.dot(b))
+    return np.abs(a_norm.dot(b_norm))
 
 def inference(input_path: str) -> str:
     # Call get_embedding_from_wavs
