@@ -14,5 +14,9 @@
     - Arden: use `tensorboard --log_dir /tmp/retrain_logs/train`
 
 # Inference
-1. `python tensorflow/tensorflow/tensorflow/examples/speech_commands/train.py --model_architecture mobilenet_embedding --data_dir ~/Classes/EE292D/edna_mode/dataset --optimizer momentum  --background_frequency 0 --embedding_size 50 --batch_size 3 --inference True --inference_checkpoint_path /tmp/speech_commands_train/mobilenet_embedding.ckpt-100 --query_file /Users/arden/Documents/Classes/EE292D/edna_mode/dataset/arden/arden0001.wav`
-    - Need to supply `--inference True`, `--inference_checkpoint_path MODEL_CHECKPOINT`, and `--query_file WAV_FILE`
+1. Calculate new mean embeddings:
+    - Modify `CONSTANTS.MODEL_CHECKPOINT_PATH` if model retrained, then
+    - Call: `python demo/create_mean_embeddings.py --embedding_size=N`
+
+2. Run inference on a new example:
+    - Call `python demo/inference.py --input_path=PATH --embedding_size=N`

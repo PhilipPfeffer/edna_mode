@@ -1,7 +1,7 @@
 ################################################################################
 #                           Create Mean Embeddings Phase
 ################################################################################
-# Modify CONSTANTS.MEAN_EMBEDDINGS_PATH if needed, then
+# Modify CONSTANTS.MODEL_CHECKPOINT_PATH if needed, then
 # Call:
 #   python demo/create_mean_embeddings.py --embedding_size N  
 #
