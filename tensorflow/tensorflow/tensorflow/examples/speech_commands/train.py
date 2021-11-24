@@ -78,6 +78,9 @@ import input_data
 import models
 from tensorflow.python.platform import gfile
 
+# sys.path.append(os.path.join(os.path.dirname(__file__), ("../../../../../demo")))
+# import CONSTANTS
+
 FLAGS = None
 
 # # Let's read our pbtxt file into a Graph protobuf
@@ -160,37 +163,74 @@ def main(_):
   # embs is batch_size x embedding_size
   #print(f"\nembs: {embs.shape}\n")
   embs = tf.compat.v1.linalg.normalize(embs, axis=-1)[0]  # returns (tensor, norm) tuple
-  input_sample = embs[0]
+  reference_embedding = embs[0]
 
   if not FLAGS.inference:
-    pos_samples = embs[1]   # 0 is the "input", 1 is positive
-    neg_samples = embs[2:]  # rest are negative
-    #print(f"\npos samples: {pos_samples.shape}\n")
-    #print(f"\nneg samples: {neg_samples.shape}\n")
+    pos_sample_emb = embs[1]   # 0 is the "input", 1 is positive
+    neg_sample_embs = embs[2:]  # rest are negative
+    #print(f"\npos sample embedding: {pos_sample_emb.shape}\n")
+    #print(f"\nneg samples embeddings: {neg_sample_embs.shape}\n")
 
-    pos = tf.compat.v1.math.multiply(input_sample, pos_samples, name=None)
-    neg = tf.compat.v1.math.multiply(input_sample, neg_samples, name=None)
+    # Compute cosine similarity.
+    ref_mag = tf.compat.v1.math.sqrt(tf.compat.v1.math.reduce_sum(tf.compat.v1.math.square(reference_embedding), axis=-1))
+    pos_mag = tf.compat.v1.math.sqrt(tf.compat.v1.math.reduce_sum(tf.compat.v1.math.square(pos_sample_emb), axis=-1))
+    neg_mag = tf.compat.v1.math.sqrt(tf.compat.v1.math.reduce_sum(tf.compat.v1.math.square(neg_sample_embs), axis=-1))
 
-    #print(f"\npos: {pos.shape}\n")
-    #print(f"\nneg: {neg.shape}\n")
+    # ref_mag = tf.reshape(ref_mag,[])
+    # pos_mag = tf.reshape(pos_mag,[])
 
+    pos = tf.compat.v1.math.multiply(reference_embedding, pos_sample_emb, name=None)
+    neg = tf.compat.v1.math.multiply(reference_embedding, neg_sample_embs, name=None)
+
+    # print(f"\npos: {pos.shape}\n")
+    # print(f"\nneg: {neg.shape}\n")
+    
     pos = tf.compat.v1.math.reduce_sum(pos, axis=-1)  # 1d: embedding_size
     neg = tf.compat.v1.math.reduce_sum(neg, axis=-1)  # 2d: batch_size-2 x embedding_size
 
-    #print(f"\npos: {pos.shape}\n")
-    #print(f"\nneg: {neg.shape}\n")
+    # print(f"pos similarity: {pos.shape}\n")
+    # print(f"neg similarity: {neg.shape}\n")
 
-    num = tf.compat.v1.math.exp(-tf.compat.v1.math.abs(pos))  # TODO add temp?
-    denom = tf.compat.v1.math.reduce_sum(tf.compat.v1.math.exp(-tf.compat.v1.math.abs(neg))) + num
+    pos = tf.compat.v1.math.divide(pos, tf.compat.v1.math.multiply(ref_mag, pos_mag))
+    neg = tf.compat.v1.math.divide(neg, tf.compat.v1.math.multiply(ref_mag, neg_mag)) # TODO: verify that multiply does correct broadcasting.
+
+    # print(f"\npos similarity normalised: {pos.shape}\n")
+    # print(f"\nneg similarity normalised: {neg.shape}\n")
+
+    num = tf.compat.v1.math.exp(pos)  # TODO add temp?
+    denom = tf.compat.v1.math.reduce_sum(tf.compat.v1.math.exp(neg)) + num
 
     #print(f"\nnum: {num.shape}\n")
     #print(f"\ndenom: {denom.shape}\n")
+
+    fraction = tf.compat.v1.divide(num, denom)
+    log_fraction = tf.compat.v1.log(fraction)
+    exp_loss = tf.compat.v1.divide(log_fraction, FLAGS.batch_size)
+    loss = tf.compat.v1.negative(exp_loss)
 
     # Create the back propagation and training evaluation machinery in the graph.
     with tf.compat.v1.name_scope('contrastive_loss'):
       #cross_entropy_mean = tf.compat.v1.contrastive_losses.sparse_softmax_cross_entropy(
       #    labels=ground_truth_input, logits=logits)
-      contrastive_loss = -tf.compat.v1.math.reduce_sum(tf.compat.v1.log(tf.compat.v1.divide(num, denom))) / 5
+
+      # contrastive_loss = -tf.compat.v1.math.reduce_sum(tf.compat.v1.log(tf.compat.v1.divide(num, denom))) / 5
+
+      contrastive_loss = loss
+
+      # weights = None
+      # biases = None
+      # contrastive_loss = tf.compat.v1.nn.nce_loss(
+      #   weights=weights,
+      #   biases=biases,
+      #   labels=CONSTANTS.LABELS,
+      #   inputs=reference_embedding,
+      #   num_sampled=len(neg_samples),
+      #   num_classes=len(CONSTANTS.LABELS), 
+      #   num_true=1,
+      #   sampled_values=None, 
+      #   remove_accidental_hits=False, 
+      #   partition_strategy='mod',
+      #   name='nce_loss')
     
     # Add external loss
     tf.compat.v1.losses.add_loss(
@@ -221,6 +261,9 @@ def main(_):
         train_step = tf.compat.v1.train.MomentumOptimizer(
             learning_rate_input, .9,
             use_nesterov=True).minimize(contrastive_loss)
+      elif FLAGS.optimizer == 'adam':
+        train_step = tf.compat.v1.train.AdamOptimizer(
+            learning_rate_input).minimize(contrastive_loss)
       else:
         raise Exception('Invalid Optimizer')
     #predicted_indices = tf.round(input=, axis=1)
@@ -302,11 +345,21 @@ def main(_):
           FLAGS.batch_size, 0, model_settings, FLAGS.background_frequency,
           FLAGS.background_volume, time_shift_samples, 'training', sess)
 
+      # Get embedding vector.
+      embedding_op_biases = None
+      for var in tf.compat.v1.trainable_variables():
+        if var.name == 'MobilenetV1/Embs/Conv2d_1c_1x1/weights:0':
+          embedding_op_weights = var
+        if var.name == 'MobilenetV1/Embs/Conv2d_1c_1x1/biases:0':
+          embedding_op_biases = var
+
       # Run the graph with this batch of training data.
-      train_summary, n, d, p, ne, emb, loss, _, _= sess.run(
+      train_summary, embedding_op_weight, embedding_op_bias, n, d, p, ne, emb, loss, _, _= sess.run(
           [
               merged_summaries,
               # evaluation_step,
+              embedding_op_weights,
+              embedding_op_biases,
               num,    # for debug
               denom,  # for debug
               pos,    # for debug
@@ -322,6 +375,8 @@ def main(_):
               learning_rate_input: learning_rate_value,
               dropout_rate: 0.5
           })
+      # print(f"embedding_op_weight {embedding_op_weight}")
+      # print(f"embedding_op_bias {embedding_op_bias}")
       train_writer.add_summary(train_summary, training_step)
       #tf.compat.v1.logging.debug(
       #    'Step #%d: rate %f, accuracy %.1f%%, cross entropy %f' %
