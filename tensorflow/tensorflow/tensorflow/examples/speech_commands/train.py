@@ -159,12 +159,8 @@ def main(_):
   if not FLAGS.inference:
     pos_sample_emb = embs[1]   # 0 is the "input", 1 is positive
     neg_sample_embs = embs[2:]  # rest are negative
-    #print(f"\npos samples: {pos_samples.shape}\n")
-    #print(f"\nneg samples: {neg_samples.shape}\n")
-
-    # TODO: Sigmoid fn
-    # TODO: Use a dummy loss function like MSE to see if the loss function is not correct
-    # TODO: Tensorboard
+    #print(f"\npos sample embedding: {pos_sample_emb.shape}\n")
+    #print(f"\nneg samples embeddings: {neg_sample_embs.shape}\n")
 
     # Compute cosine similarity.
     ref_mag = tf.compat.v1.math.sqrt(tf.compat.v1.math.reduce_sum(tf.compat.v1.math.square(reference_embedding), axis=-1))
@@ -183,14 +179,14 @@ def main(_):
     pos = tf.compat.v1.math.reduce_sum(pos, axis=-1)  # 1d: embedding_size
     neg = tf.compat.v1.math.reduce_sum(neg, axis=-1)  # 2d: batch_size-2 x embedding_size
 
-    # print(f"pos_similarity: {pos.shape}\n")
-    # print(f"neg_similarity: {neg.shape}\n")
+    # print(f"pos similarity: {pos.shape}\n")
+    # print(f"neg similarity: {neg.shape}\n")
 
     pos = tf.compat.v1.math.divide(pos, tf.compat.v1.math.multiply(ref_mag, pos_mag))
     neg = tf.compat.v1.math.divide(neg, tf.compat.v1.math.multiply(ref_mag, neg_mag)) # TODO: verify that multiply does correct broadcasting.
 
-    # print(f"\npos_similarity_norm: {pos.shape}\n")
-    # print(f"\nneg_similarity_norm: {neg.shape}\n")
+    # print(f"\npos similarity normalised: {pos.shape}\n")
+    # print(f"\nneg similarity normalised: {neg.shape}\n")
 
     num = tf.compat.v1.math.exp(pos)  # TODO add temp?
     denom = tf.compat.v1.math.reduce_sum(tf.compat.v1.math.exp(neg)) + num
@@ -200,7 +196,7 @@ def main(_):
 
     fraction = tf.compat.v1.divide(num, denom)
     log_fraction = tf.compat.v1.log(fraction)
-    exp_loss = tf.compat.v1.divide(log_fraction, 5)
+    exp_loss = tf.compat.v1.divide(log_fraction, FLAGS.batch_size)
     loss = tf.compat.v1.negative(exp_loss)
 
     # Create the back propagation and training evaluation machinery in the graph.
