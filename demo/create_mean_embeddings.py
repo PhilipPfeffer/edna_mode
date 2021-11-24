@@ -26,7 +26,7 @@ def create_mean_embeddings(embedding_size: int):
                 if len(wav_file.name.split('.')) == 2:  # Only consider .wav files, not .wav.old
                     new_embedding = get_embedding_from_wav.get_embedding_from_wav(wav_file.path, embedding_size)
                     label_embeddings = np.concatenate((label_embeddings, new_embedding),axis=0)
-                    break
+            
             reshaped = label_embeddings.reshape(-1, embedding_size)
             mean_embedding = np.average(reshaped, axis=0)
             print(mean_embedding)
