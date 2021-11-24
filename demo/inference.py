@@ -3,6 +3,7 @@
 ################################################################################
 # Call:
 #   python demo/inference.py --input_path=PATH --embedding_size=N  
+################################################################################
 
 import CONSTANTS
 import get_embedding_from_wav

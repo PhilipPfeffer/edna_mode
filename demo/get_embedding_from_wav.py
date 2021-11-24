@@ -2,7 +2,6 @@
 #       Given one .wav file + trained model, return one embedding.
 ################################################################################
 
-# TODO(phil)
 import CONSTANTS
 from demo.CONSTANTS import MODEL_CHECKPOINT_PATH
 import numpy as np

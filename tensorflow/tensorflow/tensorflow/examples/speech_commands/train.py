@@ -78,8 +78,8 @@ import input_data
 import models
 from tensorflow.python.platform import gfile
 
-sys.path.append(os.path.join(os.path.dirname(__file__), ("../../../../../demo")))
-import CONSTANTS
+# sys.path.append(os.path.join(os.path.dirname(__file__), ("../../../../../demo")))
+# import CONSTANTS
 
 FLAGS = None
 
