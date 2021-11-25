@@ -24,3 +24,8 @@
 
 2. Run inference on a new example:
     - Call `python demo/inference.py --input_path=PATH --embedding_size=N`
+
+# Conversion
+1. Freeze model: please save into demo/frozen_models/ directory!
+    - Call: `python demo/freeze_model.py --save_path=PATH --embedding_size=N`
+    - e.g. --save_path=/Users/philipmateopfeffer/Desktop/stanford/Y5Q1/cs329e/edna_mode/demo/frozen_models/mobilenet_embedding_frozen.ckpt-2100
