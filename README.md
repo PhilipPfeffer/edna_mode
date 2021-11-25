@@ -9,13 +9,14 @@
 # Training
 1. Navigate to the speech commands directory e.g. `tensorflow/tensorflow/tensorflow/examples/speech_commands`
 2. Run training script with the following command `train.py --model_architecture mobilenet_embedding --embedding_size 100`
-    - Arden: currently using `python ./tensorflow/tensorflow/tensorflow/examples/speech_commands/train.py --model_architecture mobilenet_embedding --data_dir ABSOLUTE_PATH_TO_DATASET --optimizer momentum  --background_frequency 0 --embedding_size 50 --batch_size 5`
+    - Arden: currently using `python ./tensorflow/tensorflow/tensorflow/examples/speech_commands/train.py --model_architecture mobilenet_embedding --data_dir ABSOLUTE_PATH_TO_DATASET --optimizer adam  --background_frequency 0 --embedding_size 50 --batch_size 5`
+    - Phil: currently using `python ./tensorflow/tensorflow/tensorflow/examples/speech_commands/train.py --model_architecture mobilenet_embedding --data_dir /Users/philipmateopfeffer/Desktop/stanford/Y5Q1/cs329e/edna_mode/dataset --optimizer adam  --background_frequency 0 --embedding_size 50 --batch_size 5 --how_many_training_steps=100,100`
     - Arden: use `--verbosity debug` for more debug output
     - Arden: use `tensorboard --log_dir /tmp/retrain_logs/train`
     - If we want to quantize, use `--quantize True` flag.
 
-# Conversion
-1. `python tensorflow/tensorflow/tensorflow/examples/speech_commands/freeze.py --model_architecture mobilenet_embedding --data_dir  ~/Classes/EE292D/edna_mode/dataset --window_stride_ms=20 --save_format=saved_model --embedding_size 50 --start_checkpoint "/tmp/speech_commands_train/mobilenet_embedding.ckpt-100 " --output_file=frozen_mobilenet_emb.pb --convert_tflite=True`
+<!-- # Conversion
+1. `python tensorflow/tensorflow/tensorflow/examples/speech_commands/freeze.py --model_architecture mobilenet_embedding --data_dir  ~/Classes/EE292D/edna_mode/dataset --window_stride_ms=20 --save_format=saved_model --embedding_size 50 --start_checkpoint "/tmp/speech_commands_train/mobilenet_embedding.ckpt-100 " --output_file=frozen_mobilenet_emb.pb --convert_tflite=True` -->
 
 # Inference
 1. Calculate new mean embeddings:
@@ -27,5 +28,6 @@
 
 # Conversion
 1. Freeze model: please save into demo/frozen_models/ directory!
+    - Check that `demo/CONSTANTS.py` is correct
     - Call: `python demo/freeze_model.py --save_path=PATH --embedding_size=N`
     - e.g. --save_path=/Users/philipmateopfeffer/Desktop/stanford/Y5Q1/cs329e/edna_mode/demo/frozen_models/mobilenet_embedding_frozen.ckpt-2100
