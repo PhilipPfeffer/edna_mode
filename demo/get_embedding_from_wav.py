@@ -3,7 +3,6 @@
 ################################################################################
 
 import CONSTANTS
-from demo.CONSTANTS import MODEL_CHECKPOINT_PATH
 import numpy as np
 import os
 import subprocess

@@ -58,7 +58,7 @@ FLAGS = None
 
 def create_inference_graph(wanted_words, sample_rate, clip_duration_ms,
                            clip_stride_ms, window_size_ms, window_stride_ms,
-                           feature_bin_count, model_architecture, preprocess):
+                           feature_bin_count, model_architecture, preprocess, embedding_size):
   """Creates an audio model with the nodes needed for inference.
 
   Uses the supplied arguments to create a model, and inserts the input and
@@ -86,7 +86,7 @@ def create_inference_graph(wanted_words, sample_rate, clip_duration_ms,
   words_list = input_data.prepare_words_list(wanted_words.split(','))
   model_settings = models.prepare_model_settings(
       len(words_list), sample_rate, clip_duration_ms, window_size_ms,
-      window_stride_ms, feature_bin_count, preprocess)
+      window_stride_ms, feature_bin_count, preprocess, embedding_size)
   runtime_settings = {'clip_stride_ms': clip_stride_ms}
 
   wav_data_placeholder = tf.compat.v1.placeholder(tf.string, [],
@@ -221,7 +221,7 @@ def main(_):
   input_tensor, output_tensor = create_inference_graph(
       FLAGS.wanted_words, FLAGS.sample_rate, FLAGS.clip_duration_ms,
       FLAGS.clip_stride_ms, FLAGS.window_size_ms, FLAGS.window_stride_ms,
-      FLAGS.feature_bin_count, FLAGS.model_architecture, FLAGS.preprocess)
+      FLAGS.feature_bin_count, FLAGS.model_architecture, FLAGS.preprocess, FLAGS.embedding_size)
   if FLAGS.quantize:
     tf.contrib.quantize.create_eval_graph()
   models.load_variables_from_checkpoint(sess, FLAGS.start_checkpoint)
@@ -304,5 +304,10 @@ if __name__ == '__main__':
       type=str,
       default='graph_def',
       help='How to save the result. Can be "graph_def" or "saved_model"')
+  parser.add_argument(
+      '--embedding_size',
+      type=int,
+      default=100,
+      help='Embedding dimensionality')
   FLAGS, unparsed = parser.parse_known_args()
   tf.compat.v1.app.run(main=main, argv=[sys.argv[0]] + unparsed)

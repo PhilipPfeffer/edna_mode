@@ -952,6 +952,8 @@ def create_mobilenet_embedding_model(fingerprint_input, model_settings,
   """
   if is_training:
     dropout_rate = tf.compat.v1.placeholder(tf.float32, name='dropout_rate')
+  else:
+    dropout_rate = 1.0
   input_frequency_size = model_settings['fingerprint_width']
   input_time_size = model_settings['spectrogram_length']
   fingerprint_4d = tf.reshape(fingerprint_input,
