@@ -14,7 +14,7 @@ def get_embedding_from_wav(filepath: str, embedding_size: int) -> np.array:
         --data_dir={CONSTANTS.REPO_FILEPATH}/dataset \
         --batch_size 5 \
         --inference=True \
-        --inference_checkpoint_path={MODEL_CHECKPOINT_PATH} \
+        --inference_checkpoint_path={CONSTANTS.MODEL_CHECKPOINT_PATH} \
         --embedding_size={embedding_size} \
         --query_file={filepath}"
 
