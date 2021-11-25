@@ -78,8 +78,8 @@ import input_data
 import models
 from tensorflow.python.platform import gfile
 
-# sys.path.append(os.path.join(os.path.dirname(__file__), ("../../../../../demo")))
-# import CONSTANTS
+sys.path.append(os.path.join(os.path.dirname(__file__), ("../../../../../demo")))
+import CONSTANTS
 
 FLAGS = None
 
@@ -103,13 +103,16 @@ def main(_):
   # training data of your own, use `--data_url= ` on the command line to avoid
   # downloading.
   model_settings = models.prepare_model_settings(
-      len(input_data.prepare_words_list(FLAGS.wanted_words.split(','))),
+      # len(input_data.prepare_words_list(FLAGS.wanted_words.split(','))),
+      len(CONSTANTS.LABELS) + 2,
       FLAGS.sample_rate, FLAGS.clip_duration_ms, FLAGS.window_size_ms,
       FLAGS.window_stride_ms, FLAGS.feature_bin_count, FLAGS.preprocess, FLAGS.embedding_size)
   audio_processor = input_data.AudioProcessor(
       FLAGS.data_url, FLAGS.data_dir,
       FLAGS.silence_percentage, FLAGS.unknown_percentage,
-      FLAGS.wanted_words.split(','), FLAGS.validation_percentage,
+      # FLAGS.wanted_words.split(','), 
+      CONSTANTS.LABELS,
+      FLAGS.validation_percentage,
       FLAGS.testing_percentage, model_settings, FLAGS.summaries_dir)
   fingerprint_size = model_settings['fingerprint_size']
   # label_count = model_settings['label_count']
