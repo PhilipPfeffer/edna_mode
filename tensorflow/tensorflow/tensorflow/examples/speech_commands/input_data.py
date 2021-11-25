@@ -272,14 +272,14 @@ class AudioProcessor(object):
     for person_dir in os.listdir(self.data_dir):
       if person_dir == '_background_noise_':
           continue
-      person_dir_path = os.path.join(self.data_dir, person_dir)
-      self.data_index[person_dir] = (person_dir_path, len(os.listdir(person_dir_path)))
+      # person_dir_path = os.path.join(self.data_dir, person_dir)
+      # self.data_index[person_dir] = (person_dir_path, len(os.listdir(person_dir_path)))
       
-      # for wav_path in glob.glob(os.path.join(self.data_dir, person_dir, '*.wav')):
-      #   if person_dir in self.data_index.keys():
-      #     self.data_index[person_dir].append(os.path.join(self.data_dir, person_dir, wav_path))
-      #   else:
-      #     self.data_index[person_dir] = [os.path.join(self.data_dir, person_dir, wav_path)]
+      for wav_path in glob.glob(os.path.join(self.data_dir, person_dir, '*.wav')):
+        if person_dir in self.data_index.keys():
+          self.data_index[person_dir].append(os.path.join(self.data_dir, person_dir, wav_path))
+        else:
+          self.data_index[person_dir] = [os.path.join(self.data_dir, person_dir, wav_path)]
 
   def prepare_background_data(self):
     """Searches a folder for background noise audio, and loads it into memory.
@@ -543,9 +543,10 @@ class AudioProcessor(object):
     person = np.random.choice(all_persons)
     all_persons.remove(person)
  
-    person_dir = self.data_index[person][0]
-    person_samples = [wav_file for wav_file in glob.glob(os.path.join(person_dir, '*.wav'))]
-    input, pos = np.random.choice(person_samples, size=2, replace=False)
+    # person_dir = self.data_index[person][0]
+    # person_samples = [wav_file for wav_file in glob.glob(os.path.join(person_dir, '*.wav'))]
+    # input, pos = np.random.choice(person_samples, size=2, replace=False)
+    input, pos = np.random.choice(self.data_index[person], size=2, replace=False)
 
     for i in xrange(0, sample_count):
       if i == 0:
@@ -553,10 +554,11 @@ class AudioProcessor(object):
       elif i == 1:
         sample = pos
       else:
-        other_person = np.random.choice(all_persons)
-        other_person_dir = self.data_index[other_person][0]
-        other_person_samples = [wav_file for wav_file in glob.glob(os.path.join(other_person_dir, '*.wav'))]
-        sample = np.random.choice(other_person_samples)
+        sample = np.random.choice(self.data_index[np.random.choice(all_persons)])
+        # other_person = np.random.choice(all_persons)
+        # other_person_dir = self.data_index[other_person][0]
+        # other_person_samples = [wav_file for wav_file in glob.glob(os.path.join(other_person_dir, '*.wav'))]
+        # sample = np.random.choice(other_person_samples)
       # If we're time shifting, set up the offset for this sample.
       if time_shift > 0:
         time_shift_amount = np.random.randint(-time_shift, time_shift)
