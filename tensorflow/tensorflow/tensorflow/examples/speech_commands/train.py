@@ -175,9 +175,9 @@ def main(_):
     #print(f"\nneg samples embeddings: {neg_sample_embs.shape}\n")
 
     # Compute cosine similarity.
-    ref_mag = tf.compat.v1.math.sqrt(tf.compat.v1.math.reduce_sum(tf.compat.v1.math.square(reference_embedding), axis=-1))
-    pos_mag = tf.compat.v1.math.sqrt(tf.compat.v1.math.reduce_sum(tf.compat.v1.math.square(pos_sample_emb), axis=-1))
-    neg_mag = tf.compat.v1.math.sqrt(tf.compat.v1.math.reduce_sum(tf.compat.v1.math.square(neg_sample_embs), axis=-1))
+    # ref_mag = tf.compat.v1.math.sqrt(tf.compat.v1.math.reduce_sum(tf.compat.v1.math.square(reference_embedding), axis=-1))
+    # pos_mag = tf.compat.v1.math.sqrt(tf.compat.v1.math.reduce_sum(tf.compat.v1.math.square(pos_sample_emb), axis=-1))
+    # neg_mag = tf.compat.v1.math.sqrt(tf.compat.v1.math.reduce_sum(tf.compat.v1.math.square(neg_sample_embs), axis=-1))
 
     # ref_mag = tf.reshape(ref_mag,[])
     # pos_mag = tf.reshape(pos_mag,[])
@@ -194,8 +194,8 @@ def main(_):
     # print(f"pos similarity: {pos.shape}\n")
     # print(f"neg similarity: {neg.shape}\n")
 
-    pos = tf.compat.v1.math.divide(pos, tf.compat.v1.math.multiply(ref_mag, pos_mag))
-    neg = tf.compat.v1.math.divide(neg, tf.compat.v1.math.multiply(ref_mag, neg_mag)) # TODO: verify that multiply does correct broadcasting.
+    # pos = tf.compat.v1.math.divide(pos, tf.compat.v1.math.multiply(ref_mag, pos_mag))
+    # neg = tf.compat.v1.math.divide(neg, tf.compat.v1.math.multiply(ref_mag, neg_mag)) # TODO: verify that multiply does correct broadcasting.
 
     # print(f"\npos similarity normalised: {pos.shape}\n")
     # print(f"\nneg similarity normalised: {neg.shape}\n")
@@ -280,6 +280,7 @@ def main(_):
       tf.compat.v1.summary.scalar('contrastive_loss', contrastive_loss)
       tf.compat.v1.summary.scalar('pos_similarity', pos)
       tf.compat.v1.summary.scalar('neg_mean_similarity', tf.compat.v1.math.reduce_sum(neg) / (FLAGS.batch_size - 2))
+      tf.compat.v1.summary.scalar('pos_similarity_minus_neg_mean_similarity', pos - (tf.compat.v1.math.reduce_sum(neg) / (FLAGS.batch_size - 2)))
     #  tf.compat.v1.summary.scalar('accuracy', evaluation_step)
 
     global_step = tf.compat.v1.train.get_or_create_global_step()
