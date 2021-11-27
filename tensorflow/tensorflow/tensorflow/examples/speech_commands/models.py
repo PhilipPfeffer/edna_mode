@@ -953,13 +953,13 @@ def create_mobilenet_embedding_model(fingerprint_input, model_settings,
   if is_training:
     dropout_rate = tf.compat.v1.placeholder(tf.float32, name='dropout_rate')
   else:
-    dropout_rate = 1.0
+    dropout_rate = 0.0
   input_frequency_size = model_settings['fingerprint_width']
   input_time_size = model_settings['spectrogram_length']
   fingerprint_4d = tf.reshape(fingerprint_input,
                               [-1, input_time_size, input_frequency_size, 1])
 
-  embs = mobilenet_v1_emb(fingerprint_4d, emb_size=model_settings['embedding_size'], dropout_keep_prob=dropout_rate, is_training=is_training, min_depth=8, depth_multiplier=0.25)
+  embs = mobilenet_v1_emb(fingerprint_4d, emb_size=model_settings['embedding_size'], dropout_keep_prob=(1.0-dropout_rate), is_training=is_training, min_depth=8, depth_multiplier=0.25)
   embs = tf.compat.v1.reshape(embs[0], [-1, model_settings['embedding_size']])  # embs is a tuple?? not sure why
 
   if is_training:

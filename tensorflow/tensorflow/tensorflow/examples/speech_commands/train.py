@@ -107,7 +107,8 @@ def main(_):
   # downloading.
   model_settings = models.prepare_model_settings(
       # len(input_data.prepare_words_list(FLAGS.wanted_words.split(','))),
-      len(CONSTANTS.LABELS) + 2,
+      # len(CONSTANTS.LABELS) + 2,
+      FLAGS.embedding_size,
       FLAGS.sample_rate, FLAGS.clip_duration_ms, FLAGS.window_size_ms,
       FLAGS.window_stride_ms, FLAGS.feature_bin_count, FLAGS.preprocess, FLAGS.embedding_size)
   audio_processor = input_data.AudioProcessor(
@@ -348,7 +349,7 @@ def main(_):
         [embs],
         feed_dict={
             fingerprint_input: np.expand_dims(test_fingerprints, axis=0),
-            dropout_rate: 1.0
+            dropout_rate: 0.0
         })
     
     print("output_embedding: ", emb) 
@@ -390,20 +391,20 @@ def main(_):
       tf.compat.v1.logging.debug(f"\ntrain_fingerprints pairwise distances: \n{squareform(pdist(train_fingerprints))}\n")
 
       # Get embedding vector.
-      embedding_op_biases = None
-      for var in tf.compat.v1.trainable_variables():
-        if var.name == 'MobilenetV1/Embs/Conv2d_1c_1x1/weights:0':
-          embedding_op_weights = var
-        if var.name == 'MobilenetV1/Embs/Conv2d_1c_1x1/biases:0':
-          embedding_op_biases = var
+      # embedding_op_biases = None
+      # for var in tf.compat.v1.trainable_variables():
+      #   if var.name == 'MobilenetV1/Embs/Conv2d_1c_1x1/weights:0':
+      #     embedding_op_weights = var
+      #   if var.name == 'MobilenetV1/Embs/Conv2d_1c_1x1/biases:0':
+      #     embedding_op_biases = var
 
       # Run the graph with this batch of training data.
-      train_summary, embedding_op_weight, embedding_op_bias, n, d, p, ne, emb, l, _, _= sess.run(
+      train_summary, n, d, p, ne, emb, l, _, _= sess.run(
           [
               merged_summaries,
               # evaluation_step,
-              embedding_op_weights,
-              embedding_op_biases,
+              # embedding_op_weights,
+              # embedding_op_biases,
               num,    # for debug
               denom,  # for debug
               pos,    # for debug
@@ -420,19 +421,12 @@ def main(_):
               dropout_rate: 0.5
           })
       train_writer.add_summary(train_summary, training_step)
-      #tf.compat.v1.logging.debug(
-      #    'Step #%d: rate %f, accuracy %.1f%%, cross entropy %f' %
-      #    (training_step, learning_rate_value, train_accuracy * 100,
-      #     cross_entropy_value))
       tf.compat.v1.logging.debug(
           f'Step #{training_step}: rate {learning_rate_value}, loss {l}, n {n}, d {d}, pos {p}, neg {ne}, embs \n{emb}\n')
-      tf.compat.v1.logging.debug(f"\nembedding pairwise distances: \n{fingerprint_labels}\n{squareform(pdist(emb))}\n")
+      # tf.compat.v1.logging.debug(f"\nembedding pairwise distances: \n{fingerprint_labels}\n{squareform(pdist(emb))}\n")
       is_last_step = (training_step == training_steps_max)
       if (training_step % FLAGS.eval_step_interval) == 0 or is_last_step:
-      #  tf.compat.v1.logging.info(
-      #      'Step #%d: rate %f, accuracy %.1f%%, cross entropy %f' %
-      #      (training_step, learning_rate_value, train_accuracy * 100,
-      #       cross_entropy_value))
+
         tf.compat.v1.logging.info(
           'Step #%d: rate %f,loss %f' %
           (training_step, learning_rate_value, l))
