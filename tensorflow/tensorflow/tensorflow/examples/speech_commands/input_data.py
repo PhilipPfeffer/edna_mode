@@ -534,7 +534,6 @@ class AudioProcessor(object):
     # Data and labels will be populated and returned.
     data = np.zeros((sample_count, model_settings['fingerprint_size']))
     labels = []
-    #labels = np.zeros(sample_count)
     desired_samples = model_settings['desired_samples']
     use_background = self.background_data and (mode == 'training')
     pick_deterministically = (mode != 'training')
@@ -544,7 +543,8 @@ class AudioProcessor(object):
     # Pick which person's audio sample to use.
     all_persons = list(self.data_index.keys())
     person = np.random.choice(all_persons)
-    all_persons.remove(person)
+    if mode != "testing":
+      all_persons.remove(person)
  
     # person_dir = self.data_index[person][0]
     # person_samples = [wav_file for wav_file in glob.glob(os.path.join(person_dir, '*.wav'))]
@@ -556,8 +556,10 @@ class AudioProcessor(object):
       label = None
       if i == 0:
         sample = input
+        label = person
       elif i == 1:
         sample = pos
+        label = person
       else:
         new_person = np.random.choice(all_persons)
         labels.append(new_person)
