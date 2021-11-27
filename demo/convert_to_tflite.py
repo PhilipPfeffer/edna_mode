@@ -4,8 +4,9 @@
 #   Call:
 #       python demo/convert_to_tflite.py --data_dir=PATH --input_model_dir=PATH --embedding_size=N
 #
-#   e.g. --data_dir=/Users/philipmateopfeffer/Desktop/stanford/Y5Q1/cs329e/edna_mode/dataset
-#   e.g. --input_model_dir=/Users/philipmateopfeffer/Desktop/stanford/Y5Q1/cs329e/edna_mode/demo/frozen_models/mobilenet_embedding_frozen.ckpt-2100
+#   e.g.
+#     python demo/convert_to_tflite.py --data_dir=/Users/philipmateopfeffer/Desktop/stanford/Y5Q1/cs329e/edna_mode/dataset --input_model_dir=/Users/philipmateopfeffer/Desktop/stanford/Y5Q1/cs329e/edna_mode/demo/frozen_models/mobilenet_embedding_frozen.ckpt-200 --embedding_size=50
+#
 ################################################################################
 
 import sys
@@ -53,7 +54,7 @@ def convert_to_tflite(data_dir: str, saved_model_dir: str, embedding_size: int):
 
     def representative_dataset_gen():
       for i in range(100):
-        data = audio_processor.get_data(1, i*1, model_settings,
+        data, _ = audio_processor.get_data(1, i*1, model_settings,
                                           CONSTANTS.BACKGROUND_FREQUENCY,
                                           CONSTANTS.BACKGROUND_VOLUME_RANGE,
                                           CONSTANTS.TIME_SHIFT_MS,
