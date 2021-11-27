@@ -550,7 +550,7 @@ class AudioProcessor(object):
     # person_samples = [wav_file for wav_file in glob.glob(os.path.join(person_dir, '*.wav'))]
     # input, pos = np.random.choice(person_samples, size=2, replace=False)
     input, pos = np.random.choice(self.data_index[person], size=2, replace=False)
-
+    labels = [person, person]
     for i in xrange(0, sample_count):
       sample = None
       label = None
@@ -561,8 +561,9 @@ class AudioProcessor(object):
         sample = pos
         label = person
       else:
-        label = np.random.choice(all_persons)
-        sample = np.random.choice(self.data_index[label])
+        new_person = np.random.choice(all_persons)
+        labels.append(new_person)
+        sample = np.random.choice(self.data_index[new_person])
         # other_person = np.random.choice(all_persons)
         # other_person_dir = self.data_index[other_person][0]
         # other_person_samples = [wav_file for wav_file in glob.glob(os.path.join(other_person_dir, '*.wav'))]
@@ -618,10 +619,7 @@ class AudioProcessor(object):
         labels.append(label)
       else:
         data[i - offset, :] = data_tensor.flatten()
-    
-    if mode == "testing":
-      return data, labels
-    return data
+    return data, labels
 
   def get_features_for_wav(self, wav_filename, model_settings, sess):
     """Applies the feature transformation process to the input_wav.
