@@ -18,9 +18,12 @@ def similarity(a, b):
     b_norm = np.array(b) * 1/float(np.linalg.norm(b))
     return np.abs(a_norm.dot(b_norm))
 
+def dist(a, b):
+    return np.linalg.norm(np.array(a) - np.array(b))
+
 def inference(input_path: str, embedding_size: int) -> str:
     # Call get_embedding_from_wavs
-    embedding = get_embedding_from_wav.get_embedding_from_wav(input_path, embedding_size)
+    query_embedding = get_embedding_from_wav.get_embedding_from_wav(input_path, embedding_size)
 
     # Load all embeddings from CSV.
     mean_embeddings = {}
@@ -32,14 +35,13 @@ def inference(input_path: str, embedding_size: int) -> str:
             mean_embeddings[label] = embedding
 
     # Compute distance of input_embedding to each mean_embedding.
-    similarities = []
-    for label in CONSTANTS.LABELS:
-        similarities.append(similarity(embedding, mean_embeddings[label]))
-    similarities = np.array(similarities)
+    distances = []
+    for person, mean_embedding in mean_embeddings.items():
+        distances.append((dist(query_embedding, mean_embedding), person))
 
     # Check if min distance is to admin or other.
-    prediction = CONSTANTS.LABELS[np.argmax(similarities)]
-    return prediction
+    prediction = min(distances, key=lambda x: x[0])
+    return prediction[1]
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()

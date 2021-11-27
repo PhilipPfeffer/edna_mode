@@ -1,7 +1,7 @@
 import os
 
 # Remember to update!
-MODEL_CHECKPOINT_PATH = "/tmp/speech_commands_train/mobilenet_embedding.ckpt-200"
+MODEL_CHECKPOINT_PATH = "/tmp/speech_commands_train/tiny_embedding_conv.ckpt-1500"
 
 
 # General
@@ -17,7 +17,7 @@ MEAN_EMBEDDINGS_PATH = os.path.join(REPO_FILEPATH, "demo/mean_embeddings.csv")
 # Used in demo/freeze.py
 PREPROCESS = 'micro'
 WINDOW_STRIDE = 20
-MODEL_ARCHITECTURE = "mobilenet_embedding"
+MODEL_ARCHITECTURE = "tiny_embedding_conv"
 
 # Used in convert_to_tf_lite.py
 SILENT_PERCENTAGE = 10.0

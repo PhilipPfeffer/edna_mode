@@ -9,10 +9,11 @@ import subprocess
 import argparse
 
 def get_embedding_from_wav(filepath: str, embedding_size: int) -> np.array:
-    command = f"python {CONSTANTS.REPO_FILEPATH}tensorflow/tensorflow/tensorflow/examples/speech_commands/train.py\
-        --model_architecture=mobilenet_embedding \
+    command = f"python {CONSTANTS.REPO_FILEPATH}tensorflow/tensorflow/tensorflow/examples/speech_commands/train.py \
+        --model_architecture={CONSTANTS.MODEL_ARCHITECTURE} \
         --data_dir={CONSTANTS.REPO_FILEPATH}/dataset \
-        --batch_size 5 \
+        --batch-size 1 \
+        --sample_size 5 \
         --inference=True \
         --inference_checkpoint_path={CONSTANTS.MODEL_CHECKPOINT_PATH} \
         --embedding_size={embedding_size} \
