@@ -21,9 +21,7 @@ sys.path.append(f"{CONSTANTS.REPO_FILEPATH}/tensorflow/tensorflow/tensorflow/exa
 import input_data
 import models
 
-
-# Runs inference.
-def run_tflite_inference(data_dir: str, embedding_size: int, tflite_model_path, model_type="Float"):
+def get_test_data(data_dir, embedding_size):
   DATA_URL = ""
   model_settings = models.prepare_model_settings(
       len(CONSTANTS.LABELS) + 2,
@@ -41,6 +39,12 @@ def run_tflite_inference(data_dir: str, embedding_size: int, tflite_model_path, 
     test_data, test_labels = audio_processor.get_data(
         -1, 0, model_settings, CONSTANTS.BACKGROUND_FREQUENCY, CONSTANTS.BACKGROUND_VOLUME_RANGE,
         CONSTANTS.TIME_SHIFT_MS, 'testing', sess)
+  
+  return test_data, test_labels
+
+# Runs inference.
+def run_tflite_inference(test_data, test_labels, tflite_model_path,  model_type="Float"):
+
   test_data = np.expand_dims(test_data, axis=1).astype(np.float32)
 
   # Initialize the interpreter
@@ -84,9 +88,11 @@ if __name__ == "__main__":
     MODEL_TFLITE = os.path.join(FLAGS.saved_model_dir, 'model.tflite')
     FLOAT_MODEL_TFLITE = os.path.join(FLAGS.saved_model_dir, 'float_model.tflite')
 
-    # Compute float model accuracy
-    run_tflite_inference(FLAGS.data_dir, FLAGS.embedding_size, FLOAT_MODEL_TFLITE)
+    test_data, test_labels = get_test_data(FLAGS.data_dir, FLAGS.embedding_size)
+
+      # Compute float model accuracy
+    run_tflite_inference(test_data, test_labels, FLOAT_MODEL_TFLITE)
 
     # Compute quantized model accuracy
-    run_tflite_inference(FLAGS.data_dir, FLAGS.embedding_size, MODEL_TFLITE, model_type='Quantized')
+    run_tflite_inference(test_data, test_labels, MODEL_TFLITE, model_type='Quantized')
     

@@ -616,7 +616,7 @@ class AudioProcessor(object):
 
       if mode == "testing":
         data[i, :] = data_tensor.flatten()
-        labels.append(label)
+        # labels.append(label)
       else:
         data[i - offset, :] = data_tensor.flatten()
     return data, labels

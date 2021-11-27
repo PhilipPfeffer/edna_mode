@@ -4,3 +4,4 @@ env
 tensorflow/tensorflow/tensorflow/examples/speech_commands/__pycache__/
 slim/
 demo/__pycache__/
+demo/mean_embeddings.csv
