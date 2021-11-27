@@ -30,4 +30,8 @@
 1. Freeze model: please save into demo/frozen_models/ directory!
     - Check that `demo/CONSTANTS.py` is correct
     - Call: `python demo/freeze_model.py --save_path=PATH --embedding_size=N`
-    - e.g. --save_path=/Users/philipmateopfeffer/Desktop/stanford/Y5Q1/cs329e/edna_mode/demo/frozen_models/mobilenet_embedding_frozen.ckpt-2100
+    - e.g. `python demo/freeze_model.py --save_path=/Users/philipmateopfeffer/Desktop/stanford/Y5Q1/cs329e/edna_mode/demo/frozen_models/mobilenet_embedding_frozen.ckpt-200 --embedding_size=50`
+
+2. Convert to tflite
+    - Call: `python demo/convert_to_tflite.py --data_dir=PATH --input_model_dir=PATH --embedding_size=N`
+    - e.g. `python demo/convert_to_tflite.py --data_dir=/Users/philipmateopfeffer/Desktop/stanford/Y5Q1/cs329e/edna_mode/dataset --input_model_dir=/Users/philipmateopfeffer/Desktop/stanford/Y5Q1/cs329e/edna_mode/demo/frozen_models/mobilenet_embedding_frozen.ckpt-200 --embedding_size=50`
