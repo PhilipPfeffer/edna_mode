@@ -15,9 +15,6 @@
     - Arden: use `tensorboard --logdir /tmp/retrain_logs/train`
     - If we want to quantize, use `--quantize True` flag.
 
-<!-- # Conversion
-1. `python tensorflow/tensorflow/tensorflow/examples/speech_commands/freeze.py --model_architecture mobilenet_embedding --data_dir  ~/Classes/EE292D/edna_mode/dataset --window_stride_ms=20 --save_format=saved_model --embedding_size 50 --start_checkpoint "/tmp/speech_commands_train/mobilenet_embedding.ckpt-100 " --output_file=frozen_mobilenet_emb.pb --convert_tflite=True` -->
-
 # Inference
 1. Calculate new mean embeddings:
     - Modify `CONSTANTS.MODEL_CHECKPOINT_PATH` if model retrained, then
