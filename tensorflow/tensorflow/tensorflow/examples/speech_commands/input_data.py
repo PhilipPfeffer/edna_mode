@@ -527,10 +527,13 @@ class AudioProcessor(object):
       ValueError: If background samples are too short.
     """
     # Pick one of the partitions to choose samples from.
+    if how_many == -1:
+      how_many = self.set_size()
     sample_count = max(0, min(how_many, self.set_size()))
 
     # Data and labels will be populated and returned.
     data = np.zeros((sample_count, model_settings['fingerprint_size']))
+    labels = []
     #labels = np.zeros(sample_count)
     desired_samples = model_settings['desired_samples']
     use_background = self.background_data and (mode == 'training')
@@ -549,6 +552,8 @@ class AudioProcessor(object):
     input, pos = np.random.choice(self.data_index[person], size=2, replace=False)
     labels = [person, person]
     for i in xrange(0, sample_count):
+      sample = None
+      label = None
       if i == 0:
         sample = input
       elif i == 1:
@@ -609,6 +614,7 @@ class AudioProcessor(object):
 
       if mode == "testing":
         data[i, :] = data_tensor.flatten()
+        labels.append(label)
       else:
         data[i - offset, :] = data_tensor.flatten()
     return data, labels
