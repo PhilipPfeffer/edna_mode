@@ -10,8 +10,8 @@ python speech_commands/train.py \
     --data_dir $DATASET \
     --optimizer adam \
     --background_frequency 0 \
-    --embedding_size 3 \
-    --batch_size 10 \
+    --embedding_size 100 \
+    --batch_size 100 \
     --num_samples 3 \
     --how_many_training_steps "100000,50000" \
     --learning_rate "0.001,0.0001" \

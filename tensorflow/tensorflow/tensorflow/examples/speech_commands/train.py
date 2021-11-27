@@ -258,6 +258,7 @@ def main(_):
           pos = tf.compat.v1.reduce_sum(tf.compat.v1.square(reference_embedding - pos_sample_emb))
           neg = tf.compat.v1.reduce_sum(tf.compat.v1.square(reference_embedding - neg_sample_embs))
           loss += pos - neg
+          # loss -= neg  # test
         else:
           raise Exception(f"Unknown loss: '{FLAGS.loss}'")
       
