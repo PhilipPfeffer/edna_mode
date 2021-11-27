@@ -672,7 +672,7 @@ if __name__ == '__main__':
   parser.add_argument(
       '--preprocess',
       type=str,
-      default='mfcc',
+      default='micro',
       help='Spectrogram processing mode. Can be "mfcc", "average", or "micro"')
   parser.add_argument(
       '--embedding_size',
