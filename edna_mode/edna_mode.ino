@@ -48,6 +48,12 @@ int8_t feature_buffer[kFeatureElementCount];
 int8_t* model_input_buffer = nullptr;
 }  // namespace
 
+// Global constants for control
+const int buttonPin = 2;
+//int buttonState = 0;
+//int toggleState = 0;
+uint8_t incomingByte = 0;
+
 // The name of this function is important for Arduino compatibility.
 void setup() {
   // Set up logging. Google style is to avoid globals or statics because of
@@ -124,54 +130,111 @@ void setup() {
   recognizer = &static_recognizer;
 
   previous_time = 0;
+
+  //Added code
+  //pinMode(buttonPin, INPUT);
+  Serial.begin(9600);
+  while (!Serial);
+//  TfLiteStatus beginSampling = InitAudioRecording(error_reporter);
+//  if(beginSampling != kTfLiteOk) {
+//    Serial.println("InitAudio Failure");
+//  }
+//  else {
+  int16_t* tmp_audio_samples = nullptr;
+  int tmp_audio_samples_size = 0;
+  TfLiteStatus initSamp = GetAudioSamples(error_reporter, 0, 30, &tmp_audio_samples_size,
+                      &tmp_audio_samples);
+  if(initSamp != kTfLiteOk) {
+    Serial.println(initSamp);
+    //return initSamp;
+  }
+  Serial.println("Setup Done");
+//  }
+  
 }
 
 // The name of this function is important for Arduino compatibility.
 void loop() {
-  // Fetch the spectrogram for the current time.
-  const int32_t current_time = LatestAudioTimestamp();
-  int how_many_new_slices = 0;
-  TfLiteStatus feature_status = feature_provider->PopulateFeatureData(
-      error_reporter, previous_time, current_time, &how_many_new_slices);
-  if (feature_status != kTfLiteOk) {
-    TF_LITE_REPORT_ERROR(error_reporter, "Feature generation failed");
-    return;
-  }
-  previous_time = current_time;
-  // If no new audio samples have been received since last time, don't bother
-  // running the network model.
-  if (how_many_new_slices == 0) {
-    return;
-  }
+  //buttonState = digitalRead(buttonPin);
+  //if(buttonState == HIGH && toggleState == 0) {
+  //  toggleState = 1;
+  
+  if(Serial.available() > 0) {
+    incomingByte = Serial.parseInt();
+    
+    if(incomingByte > 64 && Serial.read() == '\n') {
+      Serial.println("Run Model");
 
-  // Copy feature buffer to input tensor
-  for (int i = 0; i < kFeatureElementCount; i++) {
-    model_input_buffer[i] = feature_buffer[i];
+      // Fetch the spectrogram for the current time.
+      const int32_t current_time = LatestAudioTimestamp();
+      previous_time = current_time - 1000;
+      if(previous_time < 0) {
+        previous_time = 0;
+      }
+      int how_many_new_slices = 0;
+      Serial.println(current_time);
+      TfLiteStatus feature_status = feature_provider->GetSample_PopulateFeatureData(
+          error_reporter, current_time, &how_many_new_slices);
+      if (feature_status != kTfLiteOk) {
+        TF_LITE_REPORT_ERROR(error_reporter, "Feature generation failed");
+        return;
+      }
+      Serial.println("Samples & Features Acquired");
+      Serial.println(how_many_new_slices);
+      //previous_time = current_time;
+      
+      // If no new audio samples have been received since last time, don't bother
+      // running the network model.
+      if (how_many_new_slices == 0) {
+        Serial.println("No new slices");
+        return;
+      }
+      Serial.println(feature_buffer[0]);
+      // Copy feature buffer to input tensor
+      for (int i = 0; i < kFeatureElementCount; i++) {
+        model_input_buffer[i] = feature_buffer[i];
+      }
+      Serial.println("data copied");
+      // Run the model on the spectrogram input and make sure it succeeds.
+      TfLiteStatus invoke_status = interpreter->Invoke();
+      if (invoke_status != kTfLiteOk) {
+        TF_LITE_REPORT_ERROR(error_reporter, "Invoke failed");
+        return;
+      }
+      Serial.println("Invoked");
+      // Obtain a pointer to the output tensor
+      TfLiteTensor* output = interpreter->output(0);
+      // Determine whether a command was recognized based on the output of inference
+      const char* found_command = nullptr;
+      uint8_t score = 0;
+      bool is_new_command = false;
+      TfLiteStatus process_status = recognizer->ProcessLatestResults(
+          output, current_time, &found_command, &score, &is_new_command);
+      if (process_status != kTfLiteOk) {
+        TF_LITE_REPORT_ERROR(error_reporter,
+                             "RecognizeCommands::ProcessLatestResults() failed");
+        return;
+      }
+      // Do something based on the recognized command. The default implementation
+      // just prints to the error console, but you should replace this with your
+      // own function for a real application.
+      RespondToCommand(error_reporter, current_time, found_command, score,
+                       is_new_command);
+      Serial.println("model done");
+    }
+    else {
+      Serial.println("nope");
+    }
   }
-
-  // Run the model on the spectrogram input and make sure it succeeds.
-  TfLiteStatus invoke_status = interpreter->Invoke();
-  if (invoke_status != kTfLiteOk) {
-    TF_LITE_REPORT_ERROR(error_reporter, "Invoke failed");
-    return;
-  }
-
-  // Obtain a pointer to the output tensor
-  TfLiteTensor* output = interpreter->output(0);
-  // Determine whether a command was recognized based on the output of inference
-  const char* found_command = nullptr;
-  uint8_t score = 0;
-  bool is_new_command = false;
-  TfLiteStatus process_status = recognizer->ProcessLatestResults(
-      output, current_time, &found_command, &score, &is_new_command);
-  if (process_status != kTfLiteOk) {
-    TF_LITE_REPORT_ERROR(error_reporter,
-                         "RecognizeCommands::ProcessLatestResults() failed");
-    return;
-  }
-  // Do something based on the recognized command. The default implementation
-  // just prints to the error console, but you should replace this with your
-  // own function for a real application.
-  RespondToCommand(error_reporter, current_time, found_command, score,
-                   is_new_command);
+  /*} else if (buttonState == LOW) {
+    if(toggleState == 1) {
+      toggleState = 0;
+      Serial.println("Button Off");
+      delay(10);
+    }
+    else {
+      Serial.println("other");
+      delay(10);
+    }
+  } */
 }

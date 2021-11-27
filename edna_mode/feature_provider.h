@@ -41,6 +41,10 @@ class FeatureProvider {
                                    int32_t last_time_in_ms, int32_t time_in_ms,
                                    int* how_many_new_slices);
 
+  // Only collects 1 second of audio data 
+  TfLiteStatus GetSample_PopulateFeatureData(
+    tflite::ErrorReporter* error_reporter, int32_t time_in_ms, int* how_many_new_slices);
+
  private:
   int feature_size_;
   int8_t* feature_data_;
