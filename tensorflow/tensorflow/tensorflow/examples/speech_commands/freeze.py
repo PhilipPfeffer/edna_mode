@@ -149,9 +149,15 @@ def create_inference_graph(wanted_words, sample_rate, clip_duration_ms,
       runtime_settings=runtime_settings)
 
   # Create an output to use for inference.
-  softmax = tf.nn.softmax(logits, name='labels_softmax')
+  # softmax = tf.nn.softmax(logits, name='labels_softmax')
 
-  return reshaped_input, softmax
+  # Change output if Embedding model
+  output = tf.nn.softmax(logits, name='labels_softmax')
+
+  if model_architecture == 'mobilenet_embedding':
+     output = logits 
+
+  return reshaped_input, output
 
 
 def save_graph_def(file_name, frozen_graph_def):
