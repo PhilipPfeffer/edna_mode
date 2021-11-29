@@ -16,12 +16,12 @@
     - If we want to quantize, use `--quantize True` flag.
     - With new model architecture, Phil: `python ./tensorflow/tensorflow/tensorflow/examples/speech_commands/train.py --model_architecture "tiny_embedding_conv" --data_dir /Users/philipmateopfeffer/Desktop/stanford/Y5Q1/cs329e/edna_mode/dataset --optimizer adam --background_frequency 0 --embedding_size 20 --batch_size 10 --num_samples 3 --how_many_training_steps 100,100 --loss triplet --use_cpu`
 
-# Inference
-1. Calculate new mean embeddings:
+3. Calculate new mean embeddings:
     - Modify `CONSTANTS.MODEL_CHECKPOINT_PATH` if model retrained, then
     - Call: `python demo/create_mean_embeddings.py --embedding_size=N`
 
-2. Run inference on a new example:
+# Inference
+2. (Optional) Run inference on a new example:
     - Call `python demo/inference.py --input_path=PATH --embedding_size=N`
 
 # Conversion
