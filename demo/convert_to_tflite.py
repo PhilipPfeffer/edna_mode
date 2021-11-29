@@ -2,10 +2,10 @@
 #                   Convert a frozen model to TF Lite.
 ################################################################################
 #   Call:
-#       python demo/convert_to_tflite.py --data_dir=PATH --input_model_dir=PATH --embedding_size=N
+#       python demo/convert_to_tflite.py --data_dir=PATH --save_model_dir=PATH --embedding_size=N
 #
 #   e.g.
-#     python demo/convert_to_tflite.py --data_dir=/Users/philipmateopfeffer/Desktop/stanford/Y5Q1/cs329e/edna_mode/dataset --input_model_dir=/Users/philipmateopfeffer/Desktop/stanford/Y5Q1/cs329e/edna_mode/demo/frozen_models/mobilenet_embedding_frozen.ckpt-200 --embedding_size=50
+#     python demo/convert_to_tflite.py --data_dir=/Users/philipmateopfeffer/Desktop/stanford/Y5Q1/cs329e/edna_mode/dataset --save_model_dir=/Users/philipmateopfeffer/Desktop/stanford/Y5Q1/cs329e/edna_mode/demo/frozen_models/mobilenet_embedding_frozen.ckpt-200 --embedding_size=50
 #
 ################################################################################
 
@@ -38,8 +38,7 @@ def convert_to_tflite(data_dir: str, saved_model_dir: str, embedding_size: int):
   # MODEL_TF = os.path.join(saved_model_dir, 'model.pb')
   MODEL_TFLITE = os.path.join(saved_model_dir, 'model.tflite')
   FLOAT_MODEL_TFLITE = os.path.join(saved_model_dir, 'float_model.tflite')
-  # MODEL_TFLITE_MICRO = os.path.join(saved_model_dir, 'model.cc')
-  SAVED_MODEL = saved_model_dir #os.path.join(, 'saved_model')
+  SAVED_MODEL = saved_model_dir
 
   with tf.compat.v1.Session() as sess:
     float_converter = tf.lite.TFLiteConverter.from_saved_model(SAVED_MODEL)
@@ -74,11 +73,11 @@ if __name__ == "__main__":
         '--data_dir',
         help='Where the dataset is saved to. Used to calculate representative dataset.')
     parser.add_argument(
-      '--input_model_dir',
-      help='Path to input (frozen) model directory.')
+      '--save_model_dir',
+      help='Path to frozen model directory where you want to save the model.')
     parser.add_argument(
       '--embedding_size',
       help='Size of embeddings used for this training run.')
     FLAGS, unparsed = parser.parse_known_args()
 
-    convert_to_tflite(FLAGS.data_dir, FLAGS.input_model_dir, FLAGS.embedding_size)
+    convert_to_tflite(FLAGS.data_dir, FLAGS.save_model_dir, FLAGS.embedding_size)
