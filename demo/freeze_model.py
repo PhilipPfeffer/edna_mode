@@ -15,7 +15,7 @@ import argparse
 
 def freeze_model(frozen_model_save_path: str, embedding_size: str):
     command = f"\
-        python {CONSTANTS.REPO_FILEPATH}/tensorflow/tensorflow/tensorflow/examples/speech_commands/freeze.py \
+        python {CONSTANTS.REPO_FILEPATH}tensorflow/tensorflow/tensorflow/examples/speech_commands/freeze.py \
             --wanted_words={CONSTANTS.LABELS} \
             --window_stride_ms={CONSTANTS.WINDOW_STRIDE} \
             --preprocess={CONSTANTS.PREPROCESS} \
@@ -31,7 +31,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument(
         '--save_path',
-        help='Path to save the frozen model to.')
+        help='Directory to save the frozen model to.')
     parser.add_argument(
       '--embedding_size',
       type=int,
