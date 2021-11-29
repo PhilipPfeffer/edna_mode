@@ -354,6 +354,8 @@ def main(_):
             fingerprint_input: np.expand_dims(test_fingerprints, axis=0),
             dropout_rate: 0.0
         })
+    # DO NOT REMOVE
+    print("output_embedding: ", emb) 
   else:
     # Save the model checkpoint with no training.
     checkpoint_path = os.path.join(FLAGS.train_dir,
