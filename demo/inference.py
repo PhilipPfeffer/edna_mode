@@ -21,10 +21,7 @@ def similarity(a, b):
 def dist(a, b):
     return np.linalg.norm(np.array(a) - np.array(b))
 
-def inference(input_path: str, embedding_size: int) -> str:
-    # Call get_embedding_from_wavs
-    query_embedding = get_embedding_from_wav.get_embedding_from_wav(input_path, embedding_size)
-
+def inference(query_embedding: np.ndarray) -> str:
     # Load all embeddings from CSV.
     mean_embeddings = {}
     with open(CONSTANTS.MEAN_EMBEDDINGS_PATH, mode='r') as infile:
@@ -54,7 +51,9 @@ if __name__ == "__main__":
         help='Size of embeddings used for this training run.')
     FLAGS, unparsed = parser.parse_known_args()    
 
-    prediction = inference(FLAGS.input_path, FLAGS.embedding_size)
+    # Call get_embedding_from_wavs
+    query_embedding = get_embedding_from_wav.get_embedding_from_wav(FLAGS.input_path, FLAGS.embedding_size)
+    prediction = inference(query_embedding)
     print("========================")
     print(f"PREDICTION: {prediction}")
     print("========================")
