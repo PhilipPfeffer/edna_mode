@@ -150,6 +150,7 @@ def main(_):
         input_placeholder, fingerprint_min, fingerprint_max)
   else:
     fingerprint_input = input_placeholder
+  
   with tf.device(device_name):
     embs, dropout_rate = models.create_model(
         fingerprint_input,
@@ -353,8 +354,6 @@ def main(_):
             fingerprint_input: np.expand_dims(test_fingerprints, axis=0),
             dropout_rate: 0.0
         })
-    
-    print("output_embedding: ", emb) 
   else:
     # Save the model checkpoint with no training.
     checkpoint_path = os.path.join(FLAGS.train_dir,
@@ -591,7 +590,7 @@ if __name__ == '__main__':
   parser.add_argument(
       '--window_stride_ms',
       type=float,
-      default=10.0,
+      default=CONSTANTS.WINDOW_STRIDE,
       help='How far to move in time between spectrogram timeslices.',
   )
   parser.add_argument(
