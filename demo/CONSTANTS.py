@@ -1,7 +1,7 @@
 import os
 
 # Remember to update!
-MODEL_CHECKPOINT_PATH = "/tmp/speech_commands_train/tiny_embedding_conv.ckpt-1500"
+MODEL_CHECKPOINT_PATH = "/tmp/speech_commands_train/tiny_embedding_conv.ckpt-200"
 
 
 # General
