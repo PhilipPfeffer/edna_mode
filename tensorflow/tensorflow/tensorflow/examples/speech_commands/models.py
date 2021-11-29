@@ -836,7 +836,6 @@ def create_tiny_embedding_conv_model(fingerprint_input, model_settings,
       shape=[first_filter_count])
   first_conv_stride_x = 2
   first_conv_stride_y = 2
-
   first_conv = tf.nn.conv2d(
       input=fingerprint_4d, filters=first_weights,
       strides=[1, first_conv_stride_y, first_conv_stride_x, 1],
@@ -882,7 +881,9 @@ def create_tiny_embedding_conv_model(fingerprint_input, model_settings,
                                      second_filter_count)
   flattened_second_dropout = tf.reshape(second_dropout,
                                         [-1, second_dropout_element_count])
-  label_count = model_settings['label_count']
+  # TODO (arden, phil): verify
+  # label_count = model_settings['label_count'] --> changed
+  label_count = model_settings['embedding_size']
   final_fc_weights = tf.compat.v1.get_variable(
       name='final_fc_weights',
       initializer=tf.compat.v1.truncated_normal_initializer(stddev=0.01),
@@ -893,6 +894,7 @@ def create_tiny_embedding_conv_model(fingerprint_input, model_settings,
       shape=[label_count])
   final_fc = (
       tf.matmul(flattened_second_dropout, final_fc_weights) + final_fc_bias)
+
   if is_training:
     return final_fc, dropout_rate
   else:

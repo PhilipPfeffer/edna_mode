@@ -83,9 +83,10 @@ def create_inference_graph(wanted_words, sample_rate, clip_duration_ms,
     Exception: If the preprocessing mode isn't recognized.
   """
 
-  words_list = input_data.prepare_words_list(wanted_words.split(','))
+  # words_list = input_data.prepare_words_list(wanted_words.split(','))
   model_settings = models.prepare_model_settings(
-      len(words_list), sample_rate, clip_duration_ms, window_size_ms,
+      # len(words_list),
+      embedding_size, sample_rate, clip_duration_ms, window_size_ms,
       window_stride_ms, feature_bin_count, preprocess, embedding_size)
   runtime_settings = {'clip_stride_ms': clip_stride_ms}
 
@@ -143,7 +144,6 @@ def create_inference_graph(wanted_words, sample_rate, clip_duration_ms,
 
   fingerprint_size = model_settings['fingerprint_size']
   reshaped_input = tf.reshape(fingerprint_input, [-1, fingerprint_size])
-
   logits = models.create_model(
       reshaped_input, model_settings, model_architecture, is_training=False,
       runtime_settings=runtime_settings)
@@ -154,7 +154,7 @@ def create_inference_graph(wanted_words, sample_rate, clip_duration_ms,
   # Change output if Embedding model
   output = tf.nn.softmax(logits, name='labels_softmax')
 
-  if model_architecture == 'mobilenet_embedding':
+  if model_architecture == 'mobilenet_embedding' or model_architecture == "tiny_embedding_conv":
      output = logits 
 
   return reshaped_input, output
