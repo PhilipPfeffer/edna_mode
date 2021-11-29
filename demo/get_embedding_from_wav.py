@@ -17,7 +17,8 @@ def get_embedding_from_wav(filepath: str, embedding_size: int) -> np.array:
         --inference=True \
         --inference_checkpoint_path={CONSTANTS.MODEL_CHECKPOINT_PATH} \
         --embedding_size={embedding_size} \
-        --query_file={filepath}"
+        --query_file={filepath} \
+        --use_cpu"
 
     result = subprocess.check_output(command, shell=True)
     result = str(result)
