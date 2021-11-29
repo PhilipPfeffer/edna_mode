@@ -14,6 +14,7 @@
     - Arden: use `--verbosity debug` for more debug output
     - Arden: use `tensorboard --logdir /tmp/retrain_logs/train`
     - If we want to quantize, use `--quantize True` flag.
+    - With new model architecture, Phil: `python ./tensorflow/tensorflow/tensorflow/examples/speech_commands/train.py --model_architecture "tiny_embedding_conv" --data_dir /Users/philipmateopfeffer/Desktop/stanford/Y5Q1/cs329e/edna_mode/dataset --optimizer adam --background_frequency 0 --embedding_size 20 --batch_size 10 --num_samples 3 --how_many_training_steps 100,100 --loss triplet --use_cpu`
 
 # Inference
 1. Calculate new mean embeddings:
@@ -35,4 +36,5 @@
 
 3. Compare float and quantized model accuracies:
     - Call: `python demo/test_tflite.py --data_dir=PATH --saved_model_dir=PATH --embedding_size=N`
+    - Use `--run_quantized` to run the quantized model, or omit it to run the float model.
     - e.g. `python demo/test_tflite.py --data_dir=/Users/philipmateopfeffer/Desktop/stanford/Y5Q1/cs329e/edna_mode/dataset --saved_model_dir=/Users/philipmateopfeffer/Desktop/stanford/Y5Q1/cs329e/edna_mode/demo/frozen_models/mobilenet_embedding_frozen.ckpt-200 --embedding_size=50`
