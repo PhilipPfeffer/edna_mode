@@ -15,6 +15,7 @@ import argparse
 import os
 import numpy as np
 import tensorflow as tf
+import inference
 
 # We add this path so we can import the speech processing modules.
 sys.path.append(f"{CONSTANTS.REPO_FILEPATH}/tensorflow/tensorflow/tensorflow/examples/speech_commands/")
@@ -65,8 +66,8 @@ def run_tflite_inference(test_data, test_labels, tflite_model_path,  model_type=
     interpreter.set_tensor(input_details["index"], test_data[i])
     interpreter.invoke()
     output = interpreter.get_tensor(output_details["index"])[0]
-    top_prediction = output.argmax()
-    correct_predictions += (top_prediction == test_labels[i])
+    prediction = inference.inference(output)
+    correct_predictions += (prediction == test_labels[i])
 
   print('%s model accuracy is %f%% (Number of test samples=%d)' % (
       model_type, (correct_predictions * 100) / len(test_data), len(test_data)))
