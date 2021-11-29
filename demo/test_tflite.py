@@ -3,10 +3,10 @@
 ################################################################################
 # Modify CONSTANTS.MODEL_CHECKPOINT_PATH if needed, then
 # Call:
-#   python demo/test_tflite.py --data_dir=PATH --saved_model_dir=PATH --embedding_size=N
+#   python demo/test_tflite.py --data_dir=PATH --saved_model_dir=PATH --embedding_size=N --run_quantized
 #
 #   e.g.
-#     python demo/test_tflite.py --data_dir=/Users/philipmateopfeffer/Desktop/stanford/Y5Q1/cs329e/edna_mode/dataset --saved_model_dir=/Users/philipmateopfeffer/Desktop/stanford/Y5Q1/cs329e/edna_mode/demo/frozen_models/mobilenet_embedding_frozen.ckpt-200 --embedding_size=50
+#     python demo/test_tflite.py --data_dir=/Users/philipmateopfeffer/Desktop/stanford/Y5Q1/cs329e/edna_mode/dataset --saved_model_dir=/Users/philipmateopfeffer/Desktop/stanford/Y5Q1/cs329e/edna_mode/demo/frozen_models/mobilenet_embedding_frozen.ckpt-200 --embedding_size=50 --run_quantized
 ################################################################################
 
 import CONSTANTS
@@ -35,7 +35,7 @@ def get_test_data(data_dir, embedding_size):
 
   # Load test data
   np.random.seed(0) # set random seed for reproducible test results.
-  with tf.Session() as sess:
+  with tf.compat.v1.Session() as sess:
     test_data, test_labels = audio_processor.get_data(
         -1, 0, model_settings, CONSTANTS.BACKGROUND_FREQUENCY, CONSTANTS.BACKGROUND_VOLUME_RANGE,
         CONSTANTS.TIME_SHIFT_MS, 'testing', sess)
@@ -83,6 +83,10 @@ if __name__ == "__main__":
     parser.add_argument(
       '--embedding_size',
       help='Size of embeddings used for this training run.')
+    parser.add_argument(
+      '--run_quantized',
+      action="store_true",
+      help='Run quantized model.')
     FLAGS, unparsed = parser.parse_known_args()
 
     MODEL_TFLITE = os.path.join(FLAGS.saved_model_dir, 'model.tflite')
@@ -90,9 +94,10 @@ if __name__ == "__main__":
 
     test_data, test_labels = get_test_data(FLAGS.data_dir, FLAGS.embedding_size)
 
+    if FLAGS.run_quantized:
+      # Compute quantized model accuracy
+      run_tflite_inference(test_data, test_labels, MODEL_TFLITE, model_type='Quantized')
+    else:
       # Compute float model accuracy
-    run_tflite_inference(test_data, test_labels, FLOAT_MODEL_TFLITE)
-
-    # Compute quantized model accuracy
-    run_tflite_inference(test_data, test_labels, MODEL_TFLITE, model_type='Quantized')
+      run_tflite_inference(test_data, test_labels, FLOAT_MODEL_TFLITE)
     
