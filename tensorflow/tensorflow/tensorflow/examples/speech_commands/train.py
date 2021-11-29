@@ -96,6 +96,8 @@ FLAGS = None
 #     tf.import_graph_def(graph_def=graph_protobuf, name="")
 
 def main(_):
+  device_name = "cpu" if FLAGS.use_cpu else "/gpu:0"
+
   # Set the verbosity based on flags (default is INFO, so we see all messages)
   tf.compat.v1.logging.set_verbosity(FLAGS.verbosity)
 
@@ -148,7 +150,7 @@ def main(_):
         input_placeholder, fingerprint_min, fingerprint_max)
   else:
     fingerprint_input = input_placeholder
-  with tf.device("/gpu:0"):
+  with tf.device(device_name):
     embs, dropout_rate = models.create_model(
         fingerprint_input,
         model_settings,
@@ -173,7 +175,7 @@ def main(_):
 
 
   if not FLAGS.inference:
-    with tf.device("/gpu:0"):
+    with tf.device(device_name):
       loss = 0
       for i in range(FLAGS.batch_size):
         batch_offset = i * FLAGS.num_samples
@@ -678,6 +680,10 @@ if __name__ == '__main__':
       type=str,
       default='MSE',
       help='"MSE" or "Contrastive"')
+  parser.add_argument(
+      '--use_cpu',
+      action="store_true",
+      help='Use a CPU')
 
   # Function used to parse --verbosity argument
   def verbosity_arg(value):
