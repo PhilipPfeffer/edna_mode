@@ -21,23 +21,23 @@
     - Call: `python demo/create_mean_embeddings.py --embedding_size=N`
 
 # Inference
-2. (Optional) Run inference on a new example:
+1. (Optional) Run inference on a new example:
     - Call `python demo/inference.py --input_path=PATH --embedding_size=N`
 
 # Conversion
 1. Freeze model: please save into demo/frozen_models/ directory!
     - Check that `demo/CONSTANTS.py` is correct
     - Call: `python demo/freeze_model.py --save_path=PATH --embedding_size=N`
-    - e.g. `python demo/freeze_model.py --save_path=/Users/philipmateopfeffer/Desktop/stanford/Y5Q1/cs329e/edna_mode/demo/frozen_models/mobilenet_embedding_frozen.ckpt-200 --embedding_size=50`
+    - e.g. `python demo/freeze_model.py --save_path=/Users/philipmateopfeffer/Desktop/stanford/Y5Q1/cs329e/edna_mode/demo/frozen_models/tiny_embedding_conv.ckpt-200 --embedding_size=20`
 
 2. Convert to tflite
     - Call: `python demo/convert_to_tflite.py --data_dir=PATH --input_model_dir=PATH --embedding_size=N`
-    - e.g. `python demo/convert_to_tflite.py --data_dir=/Users/philipmateopfeffer/Desktop/stanford/Y5Q1/cs329e/edna_mode/dataset --save_model_dir=/Users/philipmateopfeffer/Desktop/stanford/Y5Q1/cs329e/edna_mode/demo/frozen_models/mobilenet_embedding_frozen.ckpt-200 --embedding_size=50`
+    - e.g. `python demo/convert_to_tflite.py --data_dir=/Users/philipmateopfeffer/Desktop/stanford/Y5Q1/cs329e/edna_mode/dataset --save_model_dir=/Users/philipmateopfeffer/Desktop/stanford/Y5Q1/cs329e/edna_mode/demo/frozen_models/tiny_embedding_conv.ckpt-200 --embedding_size=20`
 
 3. Compare float and quantized model accuracies:
     - Call: `python demo/test_tflite.py --data_dir=PATH --saved_model_dir=PATH --embedding_size=N`
     - Use `--run_quantized` to run the quantized model, or omit it to run the float model.
-    - e.g. `python demo/test_tflite.py --data_dir=/Users/philipmateopfeffer/Desktop/stanford/Y5Q1/cs329e/edna_mode/dataset --saved_model_dir=/Users/philipmateopfeffer/Desktop/stanford/Y5Q1/cs329e/edna_mode/demo/frozen_models/mobilenet_embedding_frozen.ckpt-200 --embedding_size=50`
+    - e.g. `python demo/test_tflite.py --data_dir=/Users/philipmateopfeffer/Desktop/stanford/Y5Q1/cs329e/edna_mode/dataset --saved_model_dir=/Users/philipmateopfeffer/Desktop/stanford/Y5Q1/cs329e/edna_mode/demo/frozen_models/tiny_embedding_conv.ckpt-200 --embedding_size=20`
 
 4. Convert to tfmicro:
     - Run the following in terminal (if you haven't before): `apt-get update && apt-get -qq install xxd`
