@@ -255,7 +255,7 @@ def main(_):
     with tf.Session() as sess: #with sess:
       float_converter = tf.lite.TFLiteConverter.from_saved_model(FLAGS.output_file)
       float_tflite_model = float_converter.convert()
-      float_tflite_model_size = open("float_model.tflite", "wb").write(float_tflite_model)
+      float_tflite_model_size = open("../float_model2.tflite", "wb").write(float_tflite_model)
       # converter = tf.lite.TFLiteConverter.from_saved_model(FLAGS.output_file)
       # converter.optimizations = [tf.lite.Optimize.DEFAULT]
       # converter.inference_input_type = tf.lite.constants.INT8
