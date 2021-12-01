@@ -41,8 +41,9 @@ class FeatureProvider {
                                    int32_t last_time_in_ms, int32_t time_in_ms,
                                    int* how_many_new_slices);
 
+
  private:
-  int feature_size_;
+  int feature_size_;  
   int8_t* feature_data_;
   // Make sure we don't try to use cached information if this is the first call
   // into the provider.

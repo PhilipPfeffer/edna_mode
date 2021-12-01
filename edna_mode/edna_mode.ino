@@ -29,6 +29,11 @@ limitations under the License.
 #include "tensorflow/lite/schema/schema_generated.h"
 #include "tensorflow/lite/version.h"
 
+// Do our own inference.
+#include "mean_embeddings.h"
+#include "prediction.h"
+
+
 // Globals, used for compatibility with Arduino-style sketches.
 namespace {
 tflite::ErrorReporter* error_reporter = nullptr;
@@ -75,7 +80,7 @@ void setup() {
   //
   // tflite::AllOpsResolver resolver;
   // NOLINTNEXTLINE(runtime-global-variables)
-  static tflite::MicroMutableOpResolver<4> micro_op_resolver(error_reporter);
+  static tflite::MicroMutableOpResolver<5> micro_op_resolver(error_reporter);
   if (micro_op_resolver.AddDepthwiseConv2D() != kTfLiteOk) {
     return;
   }
@@ -88,7 +93,10 @@ void setup() {
   if (micro_op_resolver.AddReshape() != kTfLiteOk) {
     return;
   }
-
+  if (micro_op_resolver.AddConv2D() != kTfLiteOk) { 
+    return; 
+  }
+  
   // Build an interpreter to run the model with.
   static tflite::MicroInterpreter static_interpreter(
       model, micro_op_resolver, tensor_arena, kTensorArenaSize, error_reporter);
@@ -127,7 +135,7 @@ void setup() {
 }
 
 // The name of this function is important for Arduino compatibility.
-void loop() {
+void loop() {  
   // Fetch the spectrogram for the current time.
   const int32_t current_time = LatestAudioTimestamp();
   int how_many_new_slices = 0;
@@ -157,21 +165,11 @@ void loop() {
   }
 
   // Obtain a pointer to the output tensor
-  TfLiteTensor* output = interpreter->output(0);
-  // Determine whether a command was recognized based on the output of inference
-  const char* found_command = nullptr;
-  uint8_t score = 0;
-  bool is_new_command = false;
-  TfLiteStatus process_status = recognizer->ProcessLatestResults(
-      output, current_time, &found_command, &score, &is_new_command);
-  if (process_status != kTfLiteOk) {
-    TF_LITE_REPORT_ERROR(error_reporter,
-                         "RecognizeCommands::ProcessLatestResults() failed");
-    return;
-  }
-  // Do something based on the recognized command. The default implementation
-  // just prints to the error console, but you should replace this with your
-  // own function for a real application.
-  RespondToCommand(error_reporter, current_time, found_command, score,
-                   is_new_command);
+  float* output = interpreter->typed_output_tensor<float>(0);
+
+  // Compare to mean embeddings and get prediction.
+  int prediction_idx = get_prediction_idx(output);
+  const char *prediction = get_prediction_label(prediction_idx);
+  TF_LITE_REPORT_ERROR(error_reporter,
+                     "Prediction %s", prediction);
 }
