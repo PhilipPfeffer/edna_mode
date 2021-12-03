@@ -70,20 +70,34 @@ def create_mean_embeddings(embedding_size: int):
 def print_mean_embeddings():
     label_string = 'const char *mean_embeddings_labels[num_labels] = {'
     mean_embedding_string = 'const float mean_embeddings[num_labels][embedding_size] = {\n'
+    threshold_string = 'const float thresholds[num_labels] = {'
     labels = []
+    keys = []
     with open(CONSTANTS.MEAN_EMBEDDINGS_PATH, mode='r') as infile:
         reader = csv.reader(infile)
         for row in reader:
             label = row[0]
             embedding = [str(num_str) for num_str in row[1:]]
             labels.append(f'"{label}"')
+            keys.append(label)
             mean_embedding_string += '{' + ','.join(embedding) + '},\n'
-            
+    
+    threshold_dict = {}
+    with open(CONSTANTS.THRESHOLD_EMBEDDINGS_PATH, mode='r') as infile:
+        reader = csv.reader(infile)
+        for row in reader:
+            label = row[0]
+            threshold = row[1]
+            threshold_dict[label] = threshold
 
     label_string += ','.join(labels) + '};'
     mean_embedding_string += '};'
+    threshold_string += ','.join([threshold_dict[label] for label in keys]) + '};'
+
+    print()
     print(label_string)
     print(mean_embedding_string)
+    print(threshold_string)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
