@@ -119,18 +119,16 @@ TfLiteStatus FeatureProvider::PopulateFeatureData(
   }
   return kTfLiteOk;
 }
-
+//----------------------------------------------------------------------------------//
 TfLiteStatus FeatureProvider::GetSample_PopulateFeatureData(
-    tflite::ErrorReporter* error_reporter,
-    int32_t time_in_ms, int* how_many_new_slices) {
+    tflite::ErrorReporter* error_reporter) { 
       
   if (feature_size_ != kFeatureElementCount) {
     TF_LITE_REPORT_ERROR(error_reporter,
                          "Requested feature_data_ size %d doesn't match %d",
                          feature_size_, kFeatureElementCount);
-    return kTfLiteError;
-  }
-
+    return kTfLiteError;}
+    // If this is the first call, make sure we don't use any cached information.
   if (is_first_run_) {
     TfLiteStatus init_status = InitializeMicroFeatures(error_reporter);
     if (init_status != kTfLiteOk) {
@@ -138,46 +136,46 @@ TfLiteStatus FeatureProvider::GetSample_PopulateFeatureData(
     }
     is_first_run_ = false;
   }
-
-  // Quantize the time into steps as long as each window stride, so we can
-  // figure out which audio data we need to fetch.
-  //const int last_step = (last_time_in_ms / kFeatureSliceStrideMs);
-  const int current_step = (time_in_ms / kFeatureSliceStrideMs);
-
-  int slices_needed = current_step; // - last_step;
-  *how_many_new_slices = slices_needed;
-
-  const int slices_to_keep = kFeatureSliceCount - slices_needed;
-
-  // Any slices that need to be filled in with feature data have their
-  // appropriate audio data pulled, and features calculated for that slice.
-  if (slices_needed > 0) {
-    for (int new_slice = slices_to_keep; new_slice < kFeatureSliceCount;
-         ++new_slice) {
-      const int new_step = (current_step - kFeatureSliceCount + 1) + new_slice;
-      const int32_t slice_start_ms = (new_step * kFeatureSliceStrideMs);
-      int16_t* audio_samples = nullptr;
-      int audio_samples_size = 0;
-      // TODO(petewarden): Fix bug that leads to non-zero slice_start_ms
-      GetAudioSamples(error_reporter, (slice_start_ms > 0 ? slice_start_ms : 0),
-                      kFeatureSliceDurationMs, &audio_samples_size,
-                      &audio_samples);
-      if (audio_samples_size < kMaxAudioSampleSize) {
-        TF_LITE_REPORT_ERROR(error_reporter,
-                             "Audio data size %d too small, want %d",
-                             audio_samples_size, kMaxAudioSampleSize);
-        return kTfLiteError;
-      }
-      int8_t* new_slice_data = feature_data_ + (new_slice * kFeatureSliceSize);
-      size_t num_samples_read;
-      TfLiteStatus generate_status = GenerateMicroFeatures(
-          error_reporter, audio_samples, audio_samples_size, kFeatureSliceSize,
-          new_slice_data, &num_samples_read);
-      if (generate_status != kTfLiteOk) {
-        return generate_status;
-      }
-    }
+  
+  TfLiteStatus initAudio = InitAudioRecording(error_reporter);
+  if (initAudio != kTfLiteOk){
+    return initAudio;
   }
-  return kTfLiteOk;  
-
+  while(!g_new_sample); /*{
+    Serial.print("waiting for new sample");
+    delay(5);
+  }*/ 
+  for (int new_slice = 0; new_slice <= kFeatureSliceCount;
+             ++new_slice) {
+    const int new_step = (0 - kFeatureSliceCount + 1) + new_slice;
+    const int32_t slice_start_ms = (new_step * kFeatureSliceStrideMs);
+//    Serial.print(slice_start_ms);
+    int16_t* audio_samples = nullptr;
+    int audio_samples_size = 0;
+    
+    GetAudioSamples(error_reporter, (slice_start_ms > 0 ? slice_start_ms : 0),
+                    kFeatureSliceDurationMs, &audio_samples_size,
+                    &audio_samples);
+                    
+    int8_t* new_slice_data = feature_data_ + (new_slice * kFeatureSliceSize);
+    size_t num_samples_read;
+    TfLiteStatus generate_status = GenerateMicroFeatures(
+        error_reporter, audio_samples, audio_samples_size, kFeatureSliceSize,
+        new_slice_data, &num_samples_read);
+    if(generate_status != kTfLiteOk) {
+      return generate_status;
+    }
+    
+    while(!g_new_sample); /*{
+      Serial.print(new_step);
+      delay(10);
+    }*/
+    //Serial.println("new Sample");
+  }
+  
+  TfLiteStatus endAudio = EndAudioRecording(error_reporter);
+  if(endAudio != kTfLiteOk) {
+    return endAudio;
+  }
+  return kTfLiteOk;
 }

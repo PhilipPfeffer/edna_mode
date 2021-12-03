@@ -29,6 +29,8 @@ limitations under the License.
 #include "tensorflow/lite/schema/schema_generated.h"
 #include "tensorflow/lite/version.h"
 
+#include "micro_features_micro_features_generator.h"
+
 // Globals, used for compatibility with Arduino-style sketches.
 namespace {
 tflite::ErrorReporter* error_reporter = nullptr;
@@ -53,6 +55,8 @@ const int buttonPin = 2;
 //int buttonState = 0;
 //int toggleState = 0;
 uint8_t incomingByte = 0;
+
+bool is_first_run_ = true;
 
 // The name of this function is important for Arduino compatibility.
 void setup() {
@@ -140,14 +144,6 @@ void setup() {
 //    Serial.println("InitAudio Failure");
 //  }
 //  else {
-  int16_t* tmp_audio_samples = nullptr;
-  int tmp_audio_samples_size = 0;
-  TfLiteStatus initSamp = GetAudioSamples(error_reporter, 0, 30, &tmp_audio_samples_size,
-                      &tmp_audio_samples);
-  if(initSamp != kTfLiteOk) {
-    Serial.println(initSamp);
-    //return initSamp;
-  }
   Serial.println("Setup Done");
 //  }
   
@@ -173,26 +169,62 @@ void loop() {
       }
       int how_many_new_slices = 0;
       Serial.println(current_time);
-      TfLiteStatus feature_status = feature_provider->GetSample_PopulateFeatureData(
-          error_reporter, current_time, &how_many_new_slices);
+
+  //-----------------------------------------------------------------------------------------------------//
+  //-----------------------------------------------------------------------------------------------------//
+      
+      if (is_first_run_) {
+        TfLiteStatus init_status = InitializeMicroFeatures(error_reporter);
+        is_first_run_ = false;
+      }
+      TfLiteStatus initAudio = InitAudioRecording(error_reporter);
+      while(!g_new_sample){
+        Serial.print("waiting for new sample");
+        delay(5);
+      }
+  
+      for (int new_slice = 0; new_slice <= kFeatureSliceCount;
+             ++new_slice) {
+        const int new_step = new_slice;
+//        const int new_step = (0 - kFeatureSliceCount + 1) + new_slice;
+        const int32_t slice_start_ms = (new_step * kFeatureSliceStrideMs);
+        Serial.print(slice_start_ms);
+        int16_t* audio_samples = nullptr;
+        int audio_samples_size = 0;
+        // TODO(petewarden): Fix bug that leads to non-zero slice_start_msGener
+        GetAudioSamples(error_reporter, (slice_start_ms > 0 ? slice_start_ms : 0),
+                        kFeatureSliceDurationMs, &audio_samples_size,
+                        &audio_samples);
+                        
+        int8_t* new_slice_data = feature_provider->feature_data_ + (new_slice * kFeatureSliceSize);
+        size_t num_samples_read;
+        TfLiteStatus generate_status = GenerateMicroFeatures(
+            error_reporter, audio_samples, audio_samples_size, kFeatureSliceSize,
+            new_slice_data, &num_samples_read);
+            
+        while(!g_new_sample){
+          Serial.print(new_step);
+          delay(10);
+        }
+        Serial.println("new Sample");
+      }
+      TfLiteStatus endAudio = EndAudioRecording(error_reporter);
+      Serial.println("Audio Ended");
+
+  //-----------------------------------------------------------------------------------------------------//
+  //-----------------------------------------------------------------------------------------------------//
+      
+      /*TfLiteStatus feature_status = feature_provider->GetSample_PopulateFeatureData(
+          error_reporter);
       if (feature_status != kTfLiteOk) {
         TF_LITE_REPORT_ERROR(error_reporter, "Feature generation failed");
         return;
-      }
+      }*/
       Serial.println("Samples & Features Acquired");
-      Serial.println(how_many_new_slices);
-      //previous_time = current_time;
-      
-      // If no new audio samples have been received since last time, don't bother
-      // running the network model.
-      if (how_many_new_slices == 0) {
-        Serial.println("No new slices");
-        return;
-      }
-      Serial.println(feature_buffer[0]);
       // Copy feature buffer to input tensor
       for (int i = 0; i < kFeatureElementCount; i++) {
-        model_input_buffer[i] = feature_buffer[i];
+        Serial.print(feature_buffer[i]);
+        model_input_buffer[i] = feature_buffer[i];        
       }
       Serial.println("data copied");
       // Run the model on the spectrogram input and make sure it succeeds.

@@ -43,11 +43,13 @@ class FeatureProvider {
 
   // Only collects 1 second of audio data 
   TfLiteStatus GetSample_PopulateFeatureData(
-    tflite::ErrorReporter* error_reporter, int32_t time_in_ms, int* how_many_new_slices);
+    tflite::ErrorReporter* error_reporter);
 
+  int8_t* feature_data_;
+  
  private:
   int feature_size_;
-  int8_t* feature_data_;
+  //int8_t* feature_data_;
   // Make sure we don't try to use cached information if this is the first call
   // into the provider.
   bool is_first_run_;

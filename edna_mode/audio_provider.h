@@ -33,6 +33,11 @@ TfLiteStatus GetAudioSamples(tflite::ErrorReporter* error_reporter,
                              int start_ms, int duration_ms,
                              int* audio_samples_size, int16_t** audio_samples);
 
+TfLiteStatus EndAudioRecording(tflite::ErrorReporter* error_reporter);
+
+void CaptureSamples();
+extern bool g_new_sample;
+TfLiteStatus InitAudioRecording(tflite::ErrorReporter* error_reporter);
 // Returns the time that audio data was last captured in milliseconds. There's
 // no contract about what time zero represents, the accuracy, or the granularity
 // of the result. Subsequent calls will generally not return a lower value, but
