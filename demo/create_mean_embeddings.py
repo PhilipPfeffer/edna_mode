@@ -16,6 +16,7 @@ import get_embedding_from_wav
 import os
 import numpy as np
 import argparse
+import csv
 
 def create_mean_embeddings(embedding_size: int):
     embeddings = {}
@@ -38,8 +39,24 @@ def create_mean_embeddings(embedding_size: int):
             for i in range(embedding_size):
                 f.write(",%s"%(embeddings[key][i]))
             f.write("\n")
+
+def print_mean_embeddings():
+    label_string = 'const char *mean_embeddings_labels[num_labels] = {'
+    mean_embedding_string = 'const float mean_embeddings[num_labels][embedding_size] = {\n'
+    labels = []
+    with open(CONSTANTS.MEAN_EMBEDDINGS_PATH, mode='r') as infile:
+        reader = csv.reader(infile)
+        for row in reader:
+            label = row[0]
+            embedding = [str(num_str) for num_str in row[1:]]
+            labels.append(f'"{label}"')
+            mean_embedding_string += '{' + ','.join(embedding) + '},\n'
             
 
+    label_string += ','.join(labels) + '};'
+    mean_embedding_string += '};'
+    print(label_string)
+    print(mean_embedding_string)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -48,4 +65,5 @@ if __name__ == "__main__":
         help='Size of embeddings used for this training run.')
     FLAGS, unparsed = parser.parse_known_args()
     
-    prediction = create_mean_embeddings(int(FLAGS.embedding_size))
+    create_mean_embeddings(int(FLAGS.embedding_size))
+    print_mean_embeddings()
