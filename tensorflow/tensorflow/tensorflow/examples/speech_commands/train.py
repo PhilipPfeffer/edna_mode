@@ -108,8 +108,6 @@ def main(_):
   # training data of your own, use `--data_url= ` on the command line to avoid
   # downloading.
   model_settings = models.prepare_model_settings(
-      # len(input_data.prepare_words_list(FLAGS.wanted_words.split(','))),
-      # len(CONSTANTS.LABELS) + 2,
       FLAGS.embedding_size,
       FLAGS.sample_rate, FLAGS.clip_duration_ms, FLAGS.window_size_ms,
       FLAGS.window_stride_ms, FLAGS.feature_bin_count, FLAGS.preprocess, FLAGS.embedding_size)
@@ -121,7 +119,7 @@ def main(_):
       FLAGS.validation_percentage,
       FLAGS.testing_percentage, model_settings, FLAGS.summaries_dir)
   fingerprint_size = model_settings['fingerprint_size']
-  # label_count = model_settings['label_count']
+
   #time_shift_samples = int((FLAGS.time_shift_ms  # Run in inference mode: load existing weights, no training.
   time_shift_samples = 0  # TODO: figure out what this is for/how to use...
 
@@ -158,10 +156,6 @@ def main(_):
         FLAGS.model_architecture,
         is_training=True)
 
-    # Define loss and optimizer
-    # ground_truth_input = tf.compat.v1.placeholder(
-    #    tf.float32, [None, model_settings['embedding_size']], name='groundtruth_input')
-
     # Optionally we can add runtime checks to spot when NaNs or other symptoms of
     # numerical errors start occurring during training.
     control_dependencies = []
@@ -171,7 +165,6 @@ def main(_):
 
     # For each input in batch, labels should look like: [*, +, -, -, -, -, ...]
     # embs is num_samples x embedding_size
-    #print(f"\nembs: {embs.shape}\n")
     embs = tf.compat.v1.linalg.normalize(embs, axis=-1)[0]  # returns (tensor, norm) tuple
 
 
@@ -184,52 +177,22 @@ def main(_):
 
         pos_sample_emb = embs[batch_offset + 1]   # 0 is the "input", 1 is positive
         neg_sample_embs = embs[batch_offset + 2:batch_offset + FLAGS.num_samples]  # rest are negative
-        #print(f"\npos sample embedding: {pos_sample_emb.shape}\n")
-        #print(f"\nneg samples embeddings: {neg_sample_embs.shape}\n")
 
         # Compute cosine similarity.
-        # ref_mag = tf.compat.v1.math.sqrt(tf.compat.v1.math.reduce_sum(tf.compat.v1.math.square(reference_embedding), axis=-1))
-        # pos_mag = tf.compat.v1.math.sqrt(tf.compat.v1.math.reduce_sum(tf.compat.v1.math.square(pos_sample_emb), axis=-1))
-        # neg_mag = tf.compat.v1.math.sqrt(tf.compat.v1.math.reduce_sum(tf.compat.v1.math.square(neg_sample_embs), axis=-1))
-
-        # ref_mag = tf.reshape(ref_mag,[])
-        # pos_mag = tf.reshape(pos_mag,[])
-
         pos = tf.compat.v1.math.multiply(reference_embedding, pos_sample_emb, name=None)
         neg = tf.compat.v1.math.multiply(reference_embedding, neg_sample_embs, name=None)
-
-        # print(f"\npos: {pos.shape}\n")
-        # print(f"\nneg: {neg.shape}\n")
         
         pos = tf.compat.v1.math.reduce_sum(pos, axis=-1)  # 1d: embedding_size
         neg = tf.compat.v1.math.reduce_sum(neg, axis=-1)  # 2d: num_samples-2 x embedding_size
 
-        # print(f"pos similarity: {pos.shape}\n")
-        # print(f"neg similarity: {neg.shape}\n")
-
-        # pos = tf.compat.v1.math.divide(pos, tf.compat.v1.math.multiply(ref_mag, pos_mag))
-        # neg = tf.compat.v1.math.divide(neg, tf.compat.v1.math.multiply(ref_mag, neg_mag)) # TODO: verify that multiply does correct broadcasting.
-
-        # print(f"\npos similarity normalised: {pos.shape}\n")
-        # print(f"\nneg similarity normalised: {neg.shape}\n")
-
         num = tf.compat.v1.math.exp(pos)  # TODO add temp?
         denom = tf.compat.v1.math.reduce_sum(tf.compat.v1.math.exp(neg)) + num
-
-        #print(f"\nnum: {num.shape}\n")
-        #print(f"\ndenom: {denom.shape}\n")
 
         fraction = tf.compat.v1.divide(num, denom)
         log_fraction = tf.compat.v1.log(fraction)
         exp_loss = tf.compat.v1.divide(log_fraction, FLAGS.num_samples)
         if FLAGS.loss == 'contrastive':
           loss += tf.compat.v1.negative(exp_loss)
-            #cross_entropy_mean = tf.compat.v1.contrastive_losses.sparse_softmax_cross_entropy(
-            #    labels=ground_truth_input, logits=logits)
-
-            # contrastive_loss = -tf.compat.v1.math.reduce_sum(tf.compat.v1.log(tf.compat.v1.divide(num, denom))) / 5
-
-            # contrastive_loss = loss
 
             # weights = None
             # biases = None
@@ -251,10 +214,6 @@ def main(_):
           pos = tf.compat.v1.reduce_sum(tf.compat.v1.square(reference_embedding - pos_sample_emb))
           neg = tf.compat.v1.reduce_sum(tf.compat.v1.square(reference_embedding - neg_sample_embs))
           loss += (pos - neg) / (FLAGS.num_samples - 1) * FLAGS.embedding_size
-          # loss -= tf.compat.v1.losses.mean_squared_error(
-          #   neg_sample_embss, reference_embedding, weights=1.0, scope=None,
-          #   loss_collection=tf.GraphKeys.LOSSES
-          # )
           tf.compat.v1.losses.add_loss(
             loss, loss_collection=tf.compat.v1.GraphKeys.LOSSES
           )
@@ -262,7 +221,6 @@ def main(_):
           pos = tf.compat.v1.reduce_sum(tf.compat.v1.square(reference_embedding - pos_sample_emb))
           neg = tf.compat.v1.reduce_sum(tf.compat.v1.square(reference_embedding - neg_sample_embs))
           loss += pos - neg
-          # loss -= neg  # test
         else:
           raise Exception(f"Unknown loss: '{FLAGS.loss}'")
       
@@ -680,7 +638,7 @@ if __name__ == '__main__':
       '--loss',
       type=str,
       default='MSE',
-      help='"MSE" or "Contrastive"')
+      help='"MSE" or "contrastive" or "triplet')
   parser.add_argument(
       '--use_cpu',
       action="store_true",
