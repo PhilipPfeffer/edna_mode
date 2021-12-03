@@ -14,6 +14,7 @@ float compute_dist(float sample_embedding[], int mean_embedding_idx) {
 // Get the index of the prediction in the labels array.
 // Use `const char *prediction = mean_embeddings_labels[prediction_idx];`
 // to extract the prediction string.
+// Return -1 if distance to closest mean embedding exceeds maximum threshold.
 int get_prediction_idx(float sample_embedding[]) {
   int prediction_idx = -1;
   float min_dist = MAX_FLOAT;
@@ -25,11 +26,14 @@ int get_prediction_idx(float sample_embedding[]) {
       prediction_idx = i;
     }
   }
-  
+
+  // If min_dist is greater than the distance threshold, prediction is unknown.
+  if (min_dist > thresholds[prediction_idx]) return -1;
   return prediction_idx;
 }
 
 
 const char *get_prediction_label(int prediction_idx) {
+  if (prediction_idx == -1) return unknown_label;
   return mean_embeddings_labels[prediction_idx];
 }
