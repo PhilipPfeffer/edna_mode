@@ -1,0 +1,1 @@
+embedding size: 50, window_stride = 10, feature_bin_count = 40, window_size_ms = 30, clip_duration_ms = 1000
