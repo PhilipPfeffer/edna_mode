@@ -45,14 +45,30 @@ def visualize_mean_embs(embedding_size: int):
             embedding = [float(num_str) for num_str in row[1:]]
             mean_embeddings.append(embedding)
             mean_embeddings_labels.append(label)
+            
+    labels = []
+    column_names = [f"emb_{i}" for i in range(embedding_size)]
+    df = pd.DataFrame(columns=column_names)
+    for label in os.scandir(CONSTANTS.DATASET_FILEPATH):
+        if label.name in CONSTANTS.LABELS: # Only consider real labels, i.e. not __backgorund_noise__
+            for wav_file in os.scandir(label):
+                if len(wav_file.name.split('.')) == 2:  # Only consider .wav files, not .wav.old
+                    new_embedding = get_embedding_from_wav.get_embedding_from_wav(wav_file.path, embedding_size)
+                    new_emb_dict = {f"emb_{i}": val for i, val in enumerate(new_embedding)}
+                    df = df.append(new_emb_dict, ignore_index=True)
+                    labels.append(label.name)
+        
 
     pca = PCA(n_components=3)
-    pca.fit(np.array(mean_embeddings)) 
+    pca.fit(df.values)
+    # pca.fit(np.array(mean_embeddings)) 
     mean_embeddings_pca = pca.transform(mean_embeddings)
-    print(mean_embeddings_pca)
+    print(f"mean embeddings after PCA:\n{mean_embeddings_pca}")
+    reference_embeddings_pca = pca.transform(df.values)
+    print(f"reference embeddings after PCA:\n{reference_embeddings_pca}")
 
+    # Plot mean embeddings
     origin = np.array([[0, 0, 0],[0, 0, 0], [0, 0, 0]]) # origin point
-
     fig = plt.figure()
     ax = fig.gca(projection='3d')
     ax.set_xlim3d(-1, 1)
@@ -64,6 +80,12 @@ def visualize_mean_embs(embedding_size: int):
     for i in range(len(mean_embeddings_pca)):
         ax.quiver(*origin, mean_embeddings_pca[i,0], mean_embeddings_pca[i,1], mean_embeddings_pca[i,2], color=color_map[i], normalize=True)
     ax.legend(mean_embeddings_labels)
+
+    # Plot reference embeddings
+    label_to_color_map = {label: color_map[i] for i, label in enumerate(mean_embeddings_labels)}
+    for i, label in enumerate(labels):
+        ax.scatter(reference_embeddings_pca[i,0], reference_embeddings_pca[i,1], reference_embeddings_pca[i,2], marker='o', color=label_to_color_map[label])
+
     plt.show()
     plt.savefig('mean_embeddings_pca.png')
 
@@ -71,7 +93,7 @@ def visualize_mean_embs(embedding_size: int):
 if __name__=="__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        '--embedding_size',
+        '--embedding_size', type=int,
         help='Size of embeddings used for this training run.')
     parser.add_argument('--visualize_mean_embs', dest='visualize_mean_embs', action='store_true', default=False)
     parser.add_argument('--visualize_test_embs', dest='visualize_test_embs', action='store_true', default=False)
