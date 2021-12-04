@@ -21,6 +21,7 @@ def freeze_model(frozen_model_save_path: str, embedding_size: str):
             --preprocess={CONSTANTS.PREPROCESS} \
             --model_architecture={CONSTANTS.MODEL_ARCHITECTURE} \
             --start_checkpoint={CONSTANTS.MODEL_CHECKPOINT_PATH} \
+            --feature_bin_count={CONSTANTS.FEATURE_BIN_COUNT} \
             --save_format=saved_model \
             --output_file={frozen_model_save_path} \
             --embedding_size={embedding_size}"

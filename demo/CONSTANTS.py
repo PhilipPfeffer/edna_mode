@@ -2,6 +2,7 @@ import os
 
 # Remember to update!
 MODEL_CHECKPOINT_PATH = "/home/arden/Classes/EE292D/edna_mode/models/tiny_embedding_conv_vox_150k_emb50/tiny_embedding_conv.ckpt-150000"
+#MODEL_CHECKPOINT_PATH = "/home/arden/Classes/EE292D/edna_mode/models/mobilenet_embedding_vox_150k_emb50/mobilenet_embedding.ckpt-150000"
 
 
 # General
@@ -12,12 +13,14 @@ ADMIN = "phil"
 LABELS = ["phil", "greg", "arden"]
 DEMO_WAV_PATH = os.path.join(CONSTANTS_FILEPATH, "./demo_dataset/phil/phil_demo.wav")
 MEAN_EMBEDDINGS_PATH = os.path.join(REPO_FILEPATH, "demo/mean_embeddings.csv")
+THRESHOLD_EMBEDDINGS_PATH = os.path.join(REPO_FILEPATH, "demo/thresholds.csv")
 
 
 # Used in demo/freeze.py
 PREPROCESS = 'micro'
 WINDOW_STRIDE = 10
 MODEL_ARCHITECTURE = "tiny_embedding_conv"
+#MODEL_ARCHITECTURE = "mobilenet_embedding"
 
 # Used in convert_to_tf_lite.py
 SILENT_PERCENTAGE = 10.0

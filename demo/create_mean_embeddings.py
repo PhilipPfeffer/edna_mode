@@ -8,7 +8,9 @@
 # Description:
 #   Loop over all examples in each label, call get_embedding_from_wavs()
 #   Calculate mean embedding for each label.
+#   Calculate threshold: largest pairwise distance between embeddings of each label.
 #   Store mean embeddings to csv.
+#   Store threshold to csv.
 ################################################################################
 
 import CONSTANTS
@@ -16,30 +18,86 @@ import get_embedding_from_wav
 import os
 import numpy as np
 import argparse
+import csv
+import inference
 
 def create_mean_embeddings(embedding_size: int):
-    embeddings = {}
+    mean_embeddings = {}
+    max_distances = {}
+
+    #   Loop over all examples in each label
     for label in os.scandir(CONSTANTS.DATASET_FILEPATH):
         if label.name in CONSTANTS.LABELS: # Only consider real labels, i.e. not __backgorund_noise__
+            # Concat embedding for each wav file.
             label_embeddings = np.array([])
             for wav_file in os.scandir(label):
                 if len(wav_file.name.split('.')) == 2:  # Only consider .wav files, not .wav.old
                     new_embedding = get_embedding_from_wav.get_embedding_from_wav(wav_file.path, embedding_size)
                     label_embeddings = np.concatenate((label_embeddings, new_embedding),axis=0)
-            
-            reshaped = label_embeddings.reshape(-1, embedding_size)
-            mean_embedding = np.average(reshaped, axis=0)
-            print(mean_embedding)
-            embeddings[label.name] = mean_embedding
 
+            # Calculate mean embedding for each label.
+            label_embeddings = label_embeddings.reshape(-1, embedding_size)
+            mean_embedding = np.average(label_embeddings, axis=0)
+            mean_embeddings[label.name] = mean_embedding
+            print(f"Mean embedding for {label.name}: {mean_embedding}")
+
+            # Calculate pairwise distances.
+            label_distances = []
+            for idx_i, embedding_i in enumerate(label_embeddings):
+                for idx_j, embedding_j in enumerate(label_embeddings):
+                    if idx_i != idx_j:
+                        dist_ij = inference.dist(embedding_i, embedding_j)
+                        label_distances.append(dist_ij)
+            max_dist = np.max(label_distances)
+            max_distances[label.name] = max_dist
+            print(f"Max distance for {label.name}: {max_dist}")
+
+    # Store mean embeddings to csv.
     with open(CONSTANTS.MEAN_EMBEDDINGS_PATH, 'w') as f:
-        for key in embeddings.keys():
+        for key in mean_embeddings.keys():
             f.write("%s"%(key))
             for i in range(embedding_size):
-                f.write(",%s"%(embeddings[key][i]))
+                f.write(",%s"%(mean_embeddings[key][i]))
             f.write("\n")
-            
+    
+    # Store threshold to csv.
+    with open(CONSTANTS.THRESHOLD_EMBEDDINGS_PATH, 'w') as f:
+        for key in max_distances.keys():
+            f.write("%s"%(key))
+            f.write(",%s"%(max_distances[key]))
+            f.write("\n")
 
+def print_mean_embeddings():
+    label_string = 'const char *mean_embeddings_labels[num_labels] = {'
+    mean_embedding_string = 'const float mean_embeddings[num_labels][embedding_size] = {\n'
+    threshold_string = 'const float thresholds[num_labels] = {'
+    labels = []
+    keys = []
+    with open(CONSTANTS.MEAN_EMBEDDINGS_PATH, mode='r') as infile:
+        reader = csv.reader(infile)
+        for row in reader:
+            label = row[0]
+            embedding = [str(num_str) for num_str in row[1:]]
+            labels.append(f'"{label}"')
+            keys.append(label)
+            mean_embedding_string += '{' + ','.join(embedding) + '},\n'
+    
+    threshold_dict = {}
+    with open(CONSTANTS.THRESHOLD_EMBEDDINGS_PATH, mode='r') as infile:
+        reader = csv.reader(infile)
+        for row in reader:
+            label = row[0]
+            threshold = row[1]
+            threshold_dict[label] = threshold
+
+    label_string += ','.join(labels) + '};'
+    mean_embedding_string += '};'
+    threshold_string += ','.join([threshold_dict[label] for label in keys]) + '};'
+
+    print()
+    print(label_string)
+    print(mean_embedding_string)
+    print(threshold_string)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -48,4 +106,5 @@ if __name__ == "__main__":
         help='Size of embeddings used for this training run.')
     FLAGS, unparsed = parser.parse_known_args()
     
-    prediction = create_mean_embeddings(int(FLAGS.embedding_size))
+    create_mean_embeddings(int(FLAGS.embedding_size))
+    print_mean_embeddings()
