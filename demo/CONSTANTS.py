@@ -1,8 +1,9 @@
 import os
 
 # Remember to update!
-MODEL_CHECKPOINT_PATH = "/home/arden/Classes/EE292D/edna_mode/models/tiny_embedding_conv_vox_150k_emb50/tiny_embedding_conv.ckpt-150000"
-#MODEL_CHECKPOINT_PATH = "/home/arden/Classes/EE292D/edna_mode/models/mobilenet_embedding_vox_150k_emb50/mobilenet_embedding.ckpt-150000"
+MODEL_CHECKPOINT_PATH = os.path.join(os.path.dirname(__file__), "../models/speech_commands_train/tiny_embedding_conv.ckpt-200")
+# MODEL_CHECKPOINT_PATH = "/home/arden/Classes/EE292D/edna_mode/models/tiny_embedding_conv_vox_150k_emb50/tiny_embedding_conv.ckpt-150000"
+# MODEL_CHECKPOINT_PATH = "/home/arden/Classes/EE292D/edna_mode/models/mobilenet_embedding_vox_150k_emb50/mobilenet_embedding.ckpt-150000"
 
 
 # General
