@@ -41,6 +41,13 @@ class FeatureProvider {
                                    int32_t last_time_in_ms, int32_t time_in_ms,
                                    int* how_many_new_slices);
 
+  int getFeatureSize() {
+    return feature_size_;
+  }
+
+  void setFeatureSize(int feature_size) {
+    feature_size_ = feature_size;
+  }
 
  private:
   int feature_size_;  

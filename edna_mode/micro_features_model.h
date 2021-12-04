@@ -21,6 +21,11 @@ limitations under the License.
 #ifndef TENSORFLOW_LITE_MICRO_EXAMPLES_MICRO_SPEECH_MICRO_FEATURES_MODEL_H_
 #define TENSORFLOW_LITE_MICRO_EXAMPLES_MICRO_SPEECH_MICRO_FEATURES_MODEL_H_
 
+/* CHOOSE YOUR MODEL (only uncomment 1) */
+//#define MOBILENET
+//#define TINY_CONV_OLD
+#define TINY_CONV_NEW
+
 extern const unsigned char g_model[];
 extern const int g_model_len;
 

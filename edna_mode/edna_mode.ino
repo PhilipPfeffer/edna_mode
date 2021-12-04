@@ -23,6 +23,7 @@ limitations under the License.
 #include "micro_features_micro_model_settings.h"
 #include "micro_features_model.h"
 #include "recognize_commands.h"
+#include "tensorflow/lite/micro/all_ops_resolver.h"
 #include "tensorflow/lite/micro/micro_error_reporter.h"
 #include "tensorflow/lite/micro/micro_interpreter.h"
 #include "tensorflow/lite/micro/micro_mutable_op_resolver.h"
@@ -33,6 +34,7 @@ limitations under the License.
 #include "mean_embeddings.h"
 #include "prediction.h"
 
+// #define VERBOSE
 
 // Globals, used for compatibility with Arduino-style sketches.
 namespace {
@@ -47,7 +49,12 @@ int32_t previous_time = 0;
 // Create an area of memory to use for input, output, and intermediate arrays.
 // The size of this will depend on the model you're using, and may need to be
 // determined by experimentation.
-constexpr int kTensorArenaSize = 10 * 1024;
+#if defined(TINY_CONV_OLD) || defined(TINY_CONV_NEW)
+constexpr int kTensorArenaSize = 100 * 1024;
+#endif
+#ifdef MOBILENET
+constexpr int kTensorArenaSize = 150 * 1024;
+#endif
 uint8_t tensor_arena[kTensorArenaSize];
 int8_t feature_buffer[kFeatureElementCount];
 int8_t* model_input_buffer = nullptr;
@@ -78,25 +85,40 @@ void setup() {
   // incur some penalty in code space for op implementations that are not
   // needed by this graph.
   //
-  // tflite::AllOpsResolver resolver;
+
   // NOLINTNEXTLINE(runtime-global-variables)
-  static tflite::MicroMutableOpResolver<5> micro_op_resolver(error_reporter);
-  if (micro_op_resolver.AddDepthwiseConv2D() != kTfLiteOk) {
-    return;
-  }
-  if (micro_op_resolver.AddFullyConnected() != kTfLiteOk) {
-    return;
-  }
-  if (micro_op_resolver.AddSoftmax() != kTfLiteOk) {
-    return;
-  }
-  if (micro_op_resolver.AddReshape() != kTfLiteOk) {
-    return;
-  }
-  if (micro_op_resolver.AddConv2D() != kTfLiteOk) { 
-    return; 
-  }
-  
+//  static tflite::MicroMutableOpResolver<5> micro_op_resolver(error_reporter);
+////  For tiny conv
+//#if defined(TINY_CONV_OLD) || defined(TINY_CONV_NEW)
+//  Serial.print("Using tiny conv ops\n");
+//  if (micro_op_resolver.AddDepthwiseConv2D() != kTfLiteOk) {
+//    return;
+//  }
+//  if (micro_op_resolver.AddFullyConnected() != kTfLiteOk) {
+//    return;
+//  }
+//  if (micro_op_resolver.AddSoftmax() != kTfLiteOk) {
+//    return;
+//  }
+//  if (micro_op_resolver.AddReshape() != kTfLiteOk) {
+//    return;
+//  }
+//  if (micro_op_resolver.AddConv2D() != kTfLiteOk) { 
+//    return; 
+//  }
+//#endif
+//
+//  // For mobilenet
+//#ifdef MOBILENET
+//  Serial.print("Using mobilenet ops\n");
+//  micro_op_resolver.AddAveragePool2D();
+//  micro_op_resolver.AddConv2D();
+//  micro_op_resolver.AddDepthwiseConv2D();
+//  micro_op_resolver.AddReshape();
+//  micro_op_resolver.AddSoftmax();
+//#endif
+//  
+  static tflite::AllOpsResolver micro_op_resolver;
   // Build an interpreter to run the model with.
   static tflite::MicroInterpreter static_interpreter(
       model, micro_op_resolver, tensor_arena, kTensorArenaSize, error_reporter);
@@ -135,14 +157,17 @@ void setup() {
 }
 
 // The name of this function is important for Arduino compatibility.
-void loop() {  
+void loop() {
+//  delay(2000);
   // Fetch the spectrogram for the current time.
   const int32_t current_time = LatestAudioTimestamp();
   int how_many_new_slices = 0;
   TfLiteStatus feature_status = feature_provider->PopulateFeatureData(
       error_reporter, previous_time, current_time, &how_many_new_slices);
+          TF_LITE_REPORT_ERROR(error_reporter, "previous_time = %d, current_time = %d, how_many_new_slices = %d", previous_time, current_time, how_many_new_slices);
   if (feature_status != kTfLiteOk) {
     TF_LITE_REPORT_ERROR(error_reporter, "Feature generation failed");
+    TF_LITE_REPORT_ERROR(error_reporter, "previous_time = %d, current_time = %d, how_many_new_slices = %d", previous_time, current_time, how_many_new_slices);
     return;
   }
   previous_time = current_time;
@@ -172,4 +197,5 @@ void loop() {
   const char *prediction = get_prediction_label(prediction_idx);
   TF_LITE_REPORT_ERROR(error_reporter,
                      "Prediction %s", prediction);
+
 }

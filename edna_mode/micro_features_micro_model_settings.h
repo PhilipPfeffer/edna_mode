@@ -30,7 +30,7 @@ constexpr int kAudioSampleFrequency = 16000;
 constexpr int kFeatureSliceSize = 40;
 constexpr int kFeatureSliceCount = 49;
 constexpr int kFeatureElementCount = (kFeatureSliceSize * kFeatureSliceCount);
-constexpr int kFeatureSliceStrideMs = 20;
+constexpr int kFeatureSliceStrideMs = 10;  // 20 for TINY_CONV_OLD else 10
 constexpr int kFeatureSliceDurationMs = 30;
 
 // Variables for the model's output categories.
