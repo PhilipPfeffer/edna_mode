@@ -1,0 +1,4 @@
+model_checkpoint_path: "/tmp/speech_commands_train/tiny_embedding_conv.ckpt-200"
+all_model_checkpoint_paths: "/tmp/speech_commands_train/tiny_embedding_conv.ckpt-0"
+all_model_checkpoint_paths: "/tmp/speech_commands_train/tiny_embedding_conv.ckpt-100"
+all_model_checkpoint_paths: "/tmp/speech_commands_train/tiny_embedding_conv.ckpt-200"
