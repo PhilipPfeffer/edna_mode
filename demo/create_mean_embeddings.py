@@ -95,6 +95,8 @@ def print_mean_embeddings():
     threshold_string += ','.join([threshold_dict[label] for label in keys]) + '};'
 
     print()
+    
+    print('const char *unknown_label = "UNKNOWN USER"')
     print(label_string)
     print(mean_embedding_string)
     print(threshold_string)
