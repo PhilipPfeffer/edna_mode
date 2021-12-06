@@ -66,6 +66,7 @@ def run_tflite_inference(test_data, test_labels, tflite_model_path,  model_type=
     interpreter.set_tensor(input_details["index"], test_data[i])
     interpreter.invoke()
     output = interpreter.get_tensor(output_details["index"])[0]
+    print(f'tflite output: {output}')
     prediction = inference.inference(output)
     correct_predictions += (prediction == test_labels[i])
 

@@ -540,85 +540,140 @@ class AudioProcessor(object):
     # Use the processing graph we created earlier to repeatedly to generate the
     # final output sample data we'll use in training.
 
-    # Pick which person's audio sample to use.
-    all_persons = list(self.data_index.keys())
-    person = np.random.choice(all_persons)
-    if mode != "testing":
-      all_persons.remove(person)
- 
-    # person_dir = self.data_index[person][0]
-    # person_samples = [wav_file for wav_file in glob.glob(os.path.join(person_dir, '*.wav'))]
-    # input, pos = np.random.choice(person_samples, size=2, replace=False)
-    input, pos = np.random.choice(self.data_index[person], size=2, replace=False)
-    labels = [person, person]
-    for i in xrange(0, sample_count):
-      sample = None
-      label = None
-      if i == 0:
-        sample = input
-        label = person
-      elif i == 1:
-        sample = pos
-        label = person
-      else:
-        new_person = np.random.choice(all_persons)
-        labels.append(new_person)
-        sample = np.random.choice(self.data_index[new_person])
-        # other_person = np.random.choice(all_persons)
-        # other_person_dir = self.data_index[other_person][0]
-        # other_person_samples = [wav_file for wav_file in glob.glob(os.path.join(other_person_dir, '*.wav'))]
-        # sample = np.random.choice(other_person_samples)
-      # If we're time shifting, set up the offset for this sample.
-      if time_shift > 0:
-        time_shift_amount = np.random.randint(-time_shift, time_shift)
-      else:
-        time_shift_amount = 0
-      if time_shift_amount > 0:
-        time_shift_padding = [[time_shift_amount, 0], [0, 0]]
-        time_shift_offset = [0, 0]
-      else:
-        time_shift_padding = [[0, -time_shift_amount], [0, 0]]
-        time_shift_offset = [-time_shift_amount, 0]
-      input_dict = {
-          self.wav_filename_placeholder_: sample,
-          self.time_shift_padding_placeholder_: time_shift_padding,
-          self.time_shift_offset_placeholder_: time_shift_offset,
-      }
-      # Choose a section of background noise to mix in.
-      if use_background:
-        background_index = np.random.randint(len(self.background_data))
-        background_samples = self.background_data[background_index]
-        if len(background_samples) <= model_settings['desired_samples']:
-          raise ValueError(
-              'Background sample is too short! Need more than %d'
-              ' samples but only %d were found' %
-              (model_settings['desired_samples'], len(background_samples)))
-        background_offset = np.random.randint(
-            0, len(background_samples) - model_settings['desired_samples'])
-        background_clipped = background_samples[background_offset:(
-            background_offset + desired_samples)]
-        background_reshaped = background_clipped.reshape([desired_samples, 1])
-        if np.random.uniform(0, 1) < background_frequency:
-          background_volume = np.random.uniform(0, background_volume_range)
-        else:
-          background_volume = 0
-      else:
-        background_reshaped = np.zeros([desired_samples, 1])
-        background_volume = 0
-      input_dict[self.background_data_placeholder_] = background_reshaped
-      input_dict[self.background_volume_placeholder_] = background_volume
-      # If we want silence, mute out the main sample but leave the background.
-      input_dict[self.foreground_volume_placeholder_] = 1
-      # Run the graph to produce the output audio.
-      summary, data_tensor = sess.run(
-          [self.merged_summaries_, self.output_], feed_dict=input_dict)
-      self.summary_writer_.add_summary(summary)
+    if mode == 'testing' and how_many == self.set_size():
+      i = 0
+      for person, wavs in self.data_index.items():
+        for sample in wavs:
+          if time_shift > 0:
+            time_shift_amount = np.random.randint(-time_shift, time_shift)
+          else:
+            time_shift_amount = 0
+          if time_shift_amount > 0:
+            time_shift_padding = [[time_shift_amount, 0], [0, 0]]
+            time_shift_offset = [0, 0]
+          else:
+            time_shift_padding = [[0, -time_shift_amount], [0, 0]]
+            time_shift_offset = [-time_shift_amount, 0]
+          input_dict = {
+              self.wav_filename_placeholder_: sample,
+              self.time_shift_padding_placeholder_: time_shift_padding,
+              self.time_shift_offset_placeholder_: time_shift_offset,
+          }
+          # Choose a section of background noise to mix in.
+          if use_background:
+            background_index = np.random.randint(len(self.background_data))
+            background_samples = self.background_data[background_index]
+            if len(background_samples) <= model_settings['desired_samples']:
+              raise ValueError(
+                  'Background sample is too short! Need more than %d'
+                  ' samples but only %d were found' %
+                  (model_settings['desired_samples'], len(background_samples)))
+            background_offset = np.random.randint(
+                0, len(background_samples) - model_settings['desired_samples'])
+            background_clipped = background_samples[background_offset:(
+                background_offset + desired_samples)]
+            background_reshaped = background_clipped.reshape([desired_samples, 1])
+            if np.random.uniform(0, 1) < background_frequency:
+              background_volume = np.random.uniform(0, background_volume_range)
+            else:
+              background_volume = 0
+          else:
+            background_reshaped = np.zeros([desired_samples, 1])
+            background_volume = 0
+          input_dict[self.background_data_placeholder_] = background_reshaped
+          input_dict[self.background_volume_placeholder_] = background_volume
+          # If we want silence, mute out the main sample but leave the background.
+          input_dict[self.foreground_volume_placeholder_] = 1
+          # Run the graph to produce the output audio.
+          summary, data_tensor = sess.run(
+              [self.merged_summaries_, self.output_], feed_dict=input_dict)
+          self.summary_writer_.add_summary(summary)
 
-      if mode == "testing":
-        data[i, :] = data_tensor.flatten()
-        # labels.append(label)
-      else:
-        data[i - offset, :] = data_tensor.flatten()
+          data[i, :] = data_tensor.flatten()
+          i+=1
+          labels.append(person)
+
+    else:
+      # Pick which person's audio sample to use.
+      all_persons = list(self.data_index.keys())
+      person = np.random.choice(all_persons)
+      if mode != "testing":
+        all_persons.remove(person)
+  
+      # person_dir = self.data_index[person][0]
+      # person_samples = [wav_file for wav_file in glob.glob(os.path.join(person_dir, '*.wav'))]
+      # input, pos = np.random.choice(person_samples, size=2, replace=False)
+      input, pos = np.random.choice(self.data_index[person], size=2, replace=False)
+      labels = [person, person]
+      for i in xrange(0, sample_count):
+        sample = None
+        label = None
+        if i == 0:
+          sample = input
+          label = person
+        elif i == 1:
+          sample = pos
+          label = person
+        else:
+          new_person = np.random.choice(all_persons)
+          labels.append(new_person)
+          sample = np.random.choice(self.data_index[new_person])
+          # other_person = np.random.choice(all_persons)
+          # other_person_dir = self.data_index[other_person][0]
+          # other_person_samples = [wav_file for wav_file in glob.glob(os.path.join(other_person_dir, '*.wav'))]
+          # sample = np.random.choice(other_person_samples)
+        # If we're time shifting, set up the offset for this sample.
+        if time_shift > 0:
+          time_shift_amount = np.random.randint(-time_shift, time_shift)
+        else:
+          time_shift_amount = 0
+        if time_shift_amount > 0:
+          time_shift_padding = [[time_shift_amount, 0], [0, 0]]
+          time_shift_offset = [0, 0]
+        else:
+          time_shift_padding = [[0, -time_shift_amount], [0, 0]]
+          time_shift_offset = [-time_shift_amount, 0]
+        input_dict = {
+            self.wav_filename_placeholder_: sample,
+            self.time_shift_padding_placeholder_: time_shift_padding,
+            self.time_shift_offset_placeholder_: time_shift_offset,
+        }
+        # Choose a section of background noise to mix in.
+        if use_background:
+          background_index = np.random.randint(len(self.background_data))
+          background_samples = self.background_data[background_index]
+          if len(background_samples) <= model_settings['desired_samples']:
+            raise ValueError(
+                'Background sample is too short! Need more than %d'
+                ' samples but only %d were found' %
+                (model_settings['desired_samples'], len(background_samples)))
+          background_offset = np.random.randint(
+              0, len(background_samples) - model_settings['desired_samples'])
+          background_clipped = background_samples[background_offset:(
+              background_offset + desired_samples)]
+          background_reshaped = background_clipped.reshape([desired_samples, 1])
+          if np.random.uniform(0, 1) < background_frequency:
+            background_volume = np.random.uniform(0, background_volume_range)
+          else:
+            background_volume = 0
+        else:
+          background_reshaped = np.zeros([desired_samples, 1])
+          background_volume = 0
+        input_dict[self.background_data_placeholder_] = background_reshaped
+        input_dict[self.background_volume_placeholder_] = background_volume
+        # If we want silence, mute out the main sample but leave the background.
+        input_dict[self.foreground_volume_placeholder_] = 1
+        # Run the graph to produce the output audio.
+        summary, data_tensor = sess.run(
+            [self.merged_summaries_, self.output_], feed_dict=input_dict)
+        self.summary_writer_.add_summary(summary)
+
+        if mode == "testing":
+          data[i, :] = data_tensor.flatten()
+          # labels.append(label)
+        else:
+          data[i - offset, :] = data_tensor.flatten()
+
     return data, labels
 
   def get_features_for_wav(self, wav_filename, model_settings, sess):

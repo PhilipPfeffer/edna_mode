@@ -1,5 +1,6 @@
 #include "mean_embeddings.h"
 #include "micro_features_model.h"
+#include <stdint.h> 
 
 #ifdef TINY_CONV_OLD
 const char *unknown_label = "UNKNOWN USER";

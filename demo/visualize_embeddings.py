@@ -11,7 +11,10 @@ import umap
 import umap.plot
 
 import CONSTANTS
-import get_embedding_from_wav
+from get_embedding_from_wav import get_embedding_from_wav
+from create_mean_embeddings import create_mean_embeddings
+
+MODEL_NAME = os.path.basename(CONSTANTS.MODEL_CHECKPOINT_PATH)
 
 def visualize_test_embs(embedding_size: int):
     labels = []
@@ -22,7 +25,7 @@ def visualize_test_embs(embedding_size: int):
         if label.name in CONSTANTS.LABELS: # Only consider real labels, i.e. not __backgorund_noise__
             for wav_file in os.scandir(label):
                 if len(wav_file.name.split('.')) == 2:  # Only consider .wav files, not .wav.old
-                    new_embedding = get_embedding_from_wav.get_embedding_from_wav(wav_file.path, embedding_size)
+                    new_embedding = get_embedding_from_wav(wav_file.path, embedding_size)
                     new_emb_dict = {f"emb_{i}": val for i, val in enumerate(new_embedding)}
                     df = df.append(new_emb_dict, ignore_index=True)
                     labels.append(label.name)
@@ -30,11 +33,12 @@ def visualize_test_embs(embedding_size: int):
     print(df)            
     mapper = umap.UMAP().fit(df.values)
     umap.plot.points(mapper, labels=np.array(labels))
-    plt.title("UMAP Embeddings of Testing Data")
+    plt.title(f"UMAP Embeddings of Testing Data\nModel: {MODEL_NAME}")
     plt.show()
-    plt.savefig('umap.png')
+    plt.savefig(f'umap_{MODEL_NAME}.png')
 
 def visualize_mean_embs(embedding_size: int):
+
     # Load all embeddings from CSV.
     mean_embeddings = []
     mean_embeddings_labels = []
@@ -53,7 +57,7 @@ def visualize_mean_embs(embedding_size: int):
         if label.name in CONSTANTS.LABELS: # Only consider real labels, i.e. not __backgorund_noise__
             for wav_file in os.scandir(label):
                 if len(wav_file.name.split('.')) == 2:  # Only consider .wav files, not .wav.old
-                    new_embedding = get_embedding_from_wav.get_embedding_from_wav(wav_file.path, embedding_size)
+                    new_embedding = get_embedding_from_wav(wav_file.path, embedding_size)
                     new_emb_dict = {f"emb_{i}": val for i, val in enumerate(new_embedding)}
                     df = df.append(new_emb_dict, ignore_index=True)
                     labels.append(label.name)
@@ -74,7 +78,7 @@ def visualize_mean_embs(embedding_size: int):
     ax.set_xlim3d(-1, 1)
     ax.set_ylim3d(-1, 1)
     ax.set_zlim3d(-1, 1)
-    ax.set_title(f"PCA Decomposition of {embedding_size}-d Mean Embeddings")
+    ax.set_title(f"PCA Decomposition of {embedding_size}-d Mean Embeddings\nModel: {MODEL_NAME}")
 
     color_map = ['r', 'g', 'b']
     for i in range(len(mean_embeddings_pca)):
@@ -87,7 +91,7 @@ def visualize_mean_embs(embedding_size: int):
         ax.scatter(reference_embeddings_pca[i,0], reference_embeddings_pca[i,1], reference_embeddings_pca[i,2], marker='o', color=label_to_color_map[label])
 
     plt.show()
-    plt.savefig('mean_embeddings_pca.png')
+    plt.savefig(f'mean_embeddings_pca_{MODEL_NAME}_emb{embedding_size}.png')
 
 
 if __name__=="__main__":
@@ -99,6 +103,9 @@ if __name__=="__main__":
     parser.add_argument('--visualize_test_embs', dest='visualize_test_embs', action='store_true', default=False)
 
     FLAGS, unparsed = parser.parse_known_args()
+    
+    print("Creating mean embeddings...")
+    create_mean_embeddings(FLAGS.embedding_size)
     
     if FLAGS.visualize_mean_embs:
         print("Visualizing mean embeddings using PCA...")

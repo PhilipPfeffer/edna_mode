@@ -13,7 +13,7 @@ import CONSTANTS
 import subprocess
 import argparse
 
-def freeze_model(frozen_model_save_path: str, embedding_size: str):
+def freeze_model(embedding_size: str):
     command = f"\
         python {CONSTANTS.REPO_FILEPATH}tensorflow/tensorflow/tensorflow/examples/speech_commands/freeze.py \
             --wanted_words={CONSTANTS.LABELS} \
@@ -23,7 +23,7 @@ def freeze_model(frozen_model_save_path: str, embedding_size: str):
             --start_checkpoint={CONSTANTS.MODEL_CHECKPOINT_PATH} \
             --feature_bin_count={CONSTANTS.FEATURE_BIN_COUNT} \
             --save_format=saved_model \
-            --output_file={frozen_model_save_path} \
+            --output_file={CONSTANTS.TFLITE_MODEL_SAVE_PATH} \
             --embedding_size={embedding_size}"
 
     result = subprocess.check_output(command, shell=True)
@@ -31,14 +31,11 @@ def freeze_model(frozen_model_save_path: str, embedding_size: str):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        '--save_path',
-        help='Directory to save the frozen model to.')
-    parser.add_argument(
       '--embedding_size',
       type=int,
       default=100,
       help='Embedding dimensionality.')
     FLAGS, unparsed = parser.parse_known_args()
     
-    freeze_model(FLAGS.save_path, FLAGS.embedding_size)
+    freeze_model(FLAGS.embedding_size)
 
