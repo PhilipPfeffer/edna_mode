@@ -1,10 +1,12 @@
 // Labels and their mean embeddings.
 #include "micro_features_model.h"
-#define num_labels 4
+
 #ifdef TINY_CONV_OLD
+#define num_labels 3
 #define embedding_size 20
 #endif
 #ifdef MOBILENET
+#define num_labels 3
 #define embedding_size 50
 #endif
 extern const char *unknown_label;

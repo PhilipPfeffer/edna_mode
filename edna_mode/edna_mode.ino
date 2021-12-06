@@ -171,7 +171,12 @@ void loop() {
 
   // Obtain a pointer to the output tensor
   TfLiteTensor *output = interpreter->output(0);
-
+//  for (int i =0; i < embedding_size; i++) {
+//    Serial.print(output->data.int8[i]);
+//    Serial.print(" ");  
+//  }
+//  Serial.println(" ");
+  
   // Compare to mean embeddings and get prediction.
   int8_t prediction_idx = get_prediction_idx(output->data.int8);
   const char *prediction = get_prediction_label(prediction_idx);

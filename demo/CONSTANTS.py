@@ -8,13 +8,13 @@ import os
 #MODEL_CHECKPOINT_PATH = "/home/arden/Classes/EE292D/edna_mode/models/tiny_embedding_conv_vox_150k_emb25/tiny_embedding_conv.ckpt-150000"
 #MODEL_CHECKPOINT_PATH = "/home/arden/Classes/EE292D/edna_mode/models/mobilenet_embedding_vox_150k_emb50/mobilenet_embedding.ckpt-150000"
 #MODEL_CHECKPOINT_PATH = "/home/arden/Classes/EE292D/edna_mode/models/mobilenet_embedding_vox_150k_emb100/mobilenet_embedding.ckpt-148200"
-MODEL_CHECKPOINT_PATH = "/tmp/speech_commands_train/mobilenet_embedding.ckpt-100"
-TFLITE_MODEL_SAVE_PATH = "/home/arden/Classes/EE292D/edna_mode/demo/frozen_models/mobilenet_test2"
+MODEL_CHECKPOINT_PATH = "/tmp/speech_commands_train/tiny_embedding_conv.ckpt-200"
+TFLITE_MODEL_SAVE_PATH = "/Users/philipmateopfeffer/Desktop/stanford/Y5Q1/cs329e/edna_mode/demo/frozen_models/tiny_embedding_conv.ckpt-200"
 
 # General
 CONSTANTS_FILEPATH = os.path.dirname(__file__)
 REPO_FILEPATH = os.path.join(CONSTANTS_FILEPATH, "../")
-DATASET_FILEPATH = os.path.join(REPO_FILEPATH, "dataset/test")
+DATASET_FILEPATH = os.path.join(REPO_FILEPATH, "dataset/train")
 ADMIN = "phil"
 LABELS = ["phil", "greg", "arden"]
 DEMO_WAV_PATH = os.path.join(CONSTANTS_FILEPATH, "./demo_dataset/phil/phil_demo.wav")
@@ -27,8 +27,8 @@ THRESHOLD_EMBEDDINGS_QUANT_PATH = os.path.join(REPO_FILEPATH, "demo/thresholds_q
 # Used in demo/freeze.py
 PREPROCESS = 'micro'
 WINDOW_STRIDE = 20
-#MODEL_ARCHITECTURE = "tiny_embedding_conv"
-MODEL_ARCHITECTURE = "mobilenet_embedding"
+MODEL_ARCHITECTURE = "tiny_embedding_conv"
+# MODEL_ARCHITECTURE = "mobilenet_embedding"
 
 # Used in convert_to_tf_lite.py
 SILENT_PERCENTAGE = 10.0
