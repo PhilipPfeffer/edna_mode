@@ -35,6 +35,7 @@ def inference(query_embedding: np.ndarray) -> str:
     distances = []
     for person, mean_embedding in mean_embeddings.items():
         distances.append((dist(query_embedding, mean_embedding), person))
+    print(distances)
 
     # Check if min distance is to admin or other.
     prediction = min(distances, key=lambda x: x[0])

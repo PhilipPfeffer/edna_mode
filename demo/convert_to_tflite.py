@@ -23,7 +23,7 @@ import argparse
 import os
 
 
-def convert_to_tflite(data_dir: str, saved_model_dir: str, embedding_size: int):
+def convert_to_tflite(data_dir: str, embedding_size: int):
   DATA_URL = ""
   model_settings = models.prepare_model_settings(
       len(CONSTANTS.LABELS) + 2,
@@ -36,9 +36,9 @@ def convert_to_tflite(data_dir: str, saved_model_dir: str, embedding_size: int):
       CONSTANTS.TESTING_PERCENTAGE, model_settings, CONSTANTS.LOGS_DIR)
 
   # MODEL_TF = os.path.join(saved_model_dir, 'model.pb')
-  MODEL_TFLITE = os.path.join(saved_model_dir, 'model.tflite')
-  FLOAT_MODEL_TFLITE = os.path.join(saved_model_dir, 'float_model.tflite')
-  SAVED_MODEL = saved_model_dir
+  MODEL_TFLITE = os.path.join(CONSTANTS.TFLITE_MODEL_SAVE_PATH, 'model.tflite')
+  FLOAT_MODEL_TFLITE = os.path.join(CONSTANTS.TFLITE_MODEL_SAVE_PATH, 'float_model.tflite')
+  SAVED_MODEL = CONSTANTS.TFLITE_MODEL_SAVE_PATH
 
   with tf.compat.v1.Session() as sess:
     float_converter = tf.lite.TFLiteConverter.from_saved_model(SAVED_MODEL)
@@ -73,11 +73,8 @@ if __name__ == "__main__":
         '--data_dir',
         help='Where the dataset is saved to. Used to calculate representative dataset.')
     parser.add_argument(
-      '--saved_model_dir',
-      help='Path to frozen model directory where you want to save the model.')
-    parser.add_argument(
       '--embedding_size',
       help='Size of embeddings used for this training run.')
     FLAGS, unparsed = parser.parse_known_args()
 
-    convert_to_tflite(FLAGS.data_dir, FLAGS.saved_model_dir, FLAGS.embedding_size)
+    convert_to_tflite(FLAGS.data_dir, FLAGS.embedding_size)

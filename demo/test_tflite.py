@@ -17,8 +17,6 @@ import numpy as np
 import tensorflow as tf
 import inference
 
-from create_mean_embeddings import create_mean_embeddings
-
 # We add this path so we can import the speech processing modules.
 sys.path.append(f"{CONSTANTS.REPO_FILEPATH}/tensorflow/tensorflow/tensorflow/examples/speech_commands/")
 import input_data
@@ -68,6 +66,7 @@ def run_tflite_inference(test_data, test_labels, tflite_model_path,  model_type=
     interpreter.set_tensor(input_details["index"], test_data[i])
     interpreter.invoke()
     output = interpreter.get_tensor(output_details["index"])[0]
+    print(f'tflite output: {output}')
     prediction = inference.inference(output)
     correct_predictions += (prediction == test_labels[i])
 
@@ -94,7 +93,7 @@ if __name__ == "__main__":
 
     MODEL_TFLITE = os.path.join(FLAGS.saved_model_dir, 'model.tflite')
     FLOAT_MODEL_TFLITE = os.path.join(FLAGS.saved_model_dir, 'float_model.tflite')
-    
+
     test_data, test_labels = get_test_data(FLAGS.data_dir, FLAGS.embedding_size)
 
     if FLAGS.run_quantized:
