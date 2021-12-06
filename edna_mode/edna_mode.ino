@@ -23,6 +23,7 @@ limitations under the License.
 #include "micro_features_micro_model_settings.h"
 #include "micro_features_model.h"
 #include "recognize_commands.h"
+#include "tensorflow/lite/micro/all_ops_resolver.h"
 #include "tensorflow/lite/micro/micro_error_reporter.h"
 #include "tensorflow/lite/micro/micro_interpreter.h"
 #include "tensorflow/lite/micro/micro_mutable_op_resolver.h"
@@ -33,25 +34,24 @@ limitations under the License.
 #include "mean_embeddings.h"
 #include "prediction.h"
 
-
 // Globals, used for compatibility with Arduino-style sketches.
 namespace {
-tflite::ErrorReporter* error_reporter = nullptr;
-const tflite::Model* model = nullptr;
-tflite::MicroInterpreter* interpreter = nullptr;
-TfLiteTensor* model_input = nullptr;
-FeatureProvider* feature_provider = nullptr;
-RecognizeCommands* recognizer = nullptr;
+tflite::ErrorReporter *error_reporter = nullptr;
+const tflite::Model *model = nullptr;
+tflite::MicroInterpreter *interpreter = nullptr;
+TfLiteTensor *model_input = nullptr;
+FeatureProvider *feature_provider = nullptr;
+RecognizeCommands *recognizer = nullptr;
 int32_t previous_time = 0;
 
 // Create an area of memory to use for input, output, and intermediate arrays.
 // The size of this will depend on the model you're using, and may need to be
 // determined by experimentation.
-constexpr int kTensorArenaSize = 10 * 1024;
+constexpr int kTensorArenaSize = 100 * 1024;
 uint8_t tensor_arena[kTensorArenaSize];
 int8_t feature_buffer[kFeatureElementCount];
-int8_t* model_input_buffer = nullptr;
-}  // namespace
+int8_t *model_input_buffer = nullptr;
+} // namespace
 
 // The name of this function is important for Arduino compatibility.
 void setup() {
@@ -80,23 +80,26 @@ void setup() {
   //
   // tflite::AllOpsResolver resolver;
   // NOLINTNEXTLINE(runtime-global-variables)
-  static tflite::MicroMutableOpResolver<5> micro_op_resolver(error_reporter);
-  if (micro_op_resolver.AddDepthwiseConv2D() != kTfLiteOk) {
-    return;
-  }
-  if (micro_op_resolver.AddFullyConnected() != kTfLiteOk) {
-    return;
-  }
-  if (micro_op_resolver.AddSoftmax() != kTfLiteOk) {
-    return;
-  }
-  if (micro_op_resolver.AddReshape() != kTfLiteOk) {
-    return;
-  }
-  if (micro_op_resolver.AddConv2D() != kTfLiteOk) { 
-    return; 
-  }
-  
+  //  static tflite::MicroMutableOpResolver<5>
+  //  micro_op_resolver(error_reporter); if
+  //  (micro_op_resolver.AddDepthwiseConv2D() != kTfLiteOk) {
+  //    return;
+  //  }
+  //  if (micro_op_resolver.AddFullyConnected() != kTfLiteOk) {
+  //    return;
+  //  }
+  //  if (micro_op_resolver.AddSoftmax() != kTfLiteOk) {
+  //    return;
+  //  }
+  //  if (micro_op_resolver.AddReshape() != kTfLiteOk) {
+  //    return;
+  //  }
+  //  if (micro_op_resolver.AddConv2D() != kTfLiteOk) {
+  //    return;
+  //  }
+  //
+  static tflite::AllOpsResolver micro_op_resolver;
+
   // Build an interpreter to run the model with.
   static tflite::MicroInterpreter static_interpreter(
       model, micro_op_resolver, tensor_arena, kTensorArenaSize, error_reporter);
@@ -135,7 +138,7 @@ void setup() {
 }
 
 // The name of this function is important for Arduino compatibility.
-void loop() {  
+void loop() {
   // Fetch the spectrogram for the current time.
   const int32_t current_time = LatestAudioTimestamp();
   int how_many_new_slices = 0;
@@ -165,11 +168,12 @@ void loop() {
   }
 
   // Obtain a pointer to the output tensor
-  float* output = interpreter->typed_output_tensor<float>(0);
+  //  float* output = interpreter->typed_output_tensor<float>(0);
+  TfLiteTensor *output = interpreter->output(0);
+  int8_t *output_data = output->data.int8;
 
   // Compare to mean embeddings and get prediction.
-  int prediction_idx = get_prediction_idx(output);
+  int prediction_idx = get_prediction_idx(output_data);
   const char *prediction = get_prediction_label(prediction_idx);
-  TF_LITE_REPORT_ERROR(error_reporter,
-                     "Prediction %s", prediction);
+  TF_LITE_REPORT_ERROR(error_reporter, "Prediction %s", prediction);
 }
