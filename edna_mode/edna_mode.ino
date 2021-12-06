@@ -142,6 +142,7 @@ void setup() {
 // The name of this function is important for Arduino compatibility.
 void loop() {
   // Fetch the spectrogram for the current time.
+  unsigned long start = micros();
   const int32_t current_time = LatestAudioTimestamp();
   int how_many_new_slices = 0;
   TfLiteStatus feature_status = feature_provider->PopulateFeatureData(
@@ -175,5 +176,6 @@ void loop() {
   // Compare to mean embeddings and get prediction.
   int8_t prediction_idx = get_prediction_idx(output->data.int8);
   const char *prediction = get_prediction_label(prediction_idx);
-  TF_LITE_REPORT_ERROR(error_reporter, "Prediction %s", prediction);
+  unsigned long stopp = micros();
+  TF_LITE_REPORT_ERROR(error_reporter, "Prediction %s, Inference time: %d", prediction,(stopp-start));
 }

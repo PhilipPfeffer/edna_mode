@@ -2,7 +2,7 @@
 #include "micro_features_model.h"
 #define num_labels 4
 #ifdef TINY_CONV_OLD
-#define embedding_size 20
+#define embedding_size 50
 #endif
 #ifdef MOBILENET
 #define embedding_size 50
