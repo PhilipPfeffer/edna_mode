@@ -1,9 +1,10 @@
 #include "prediction.h"
 #include "mean_embeddings.h"
 #include <math.h>
+#include <stdint.h>
 
 // Compute the Euclidian distance.
-float compute_dist(int8_t sample_embedding[], int mean_embedding_idx) {
+float compute_dist(int8_t *sample_embedding, int mean_embedding_idx) {
   float sum = 0;
   for (int i = 0; i < embedding_size; i++) {
     sum += pow(
@@ -16,7 +17,7 @@ float compute_dist(int8_t sample_embedding[], int mean_embedding_idx) {
 // Use `const char *prediction = mean_embeddings_labels[prediction_idx];`
 // to extract the prediction string.
 // Return -1 if distance to closest mean embedding exceeds maximum threshold.
-int get_prediction_idx(int8_t sample_embedding[]) {
+int get_prediction_idx(int8_t *sample_embedding) {
   int prediction_idx = -1;
   float min_dist = MAX_FLOAT;
   for (int i = 0; i < num_labels; i++) {
