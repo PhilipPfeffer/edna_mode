@@ -130,7 +130,11 @@ def print_mean_embeddings(run_quantized: bool):
     dtype = 'int8_t' if run_quantized else 'float'
 
     label_string = 'const char *mean_embeddings_labels[num_labels] = {'
+<<<<<<< HEAD
     mean_embedding_string = f'const {dtype} mean_embeddings[num_labels][embedding_size] = ' + '{\n'
+=======
+    mean_embedding_string = 'const int8_t mean_embeddings[num_labels][embedding_size] = {\n'
+>>>>>>> b91ff86fa37d28cd108858d555280d2f08949e48
     threshold_string = 'const float thresholds[num_labels] = {'
     labels = []
     keys = []

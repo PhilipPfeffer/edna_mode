@@ -132,6 +132,8 @@ void setup() {
   recognizer = &static_recognizer;
 
   previous_time = 0;
+
+  Serial.begin(9600);
 }
 
 // The name of this function is important for Arduino compatibility.
@@ -165,10 +167,10 @@ void loop() {
   }
 
   // Obtain a pointer to the output tensor
-  float* output = interpreter->typed_output_tensor<float>(0);
+  TfLiteTensor* output = interpreter->output(0);
 
   // Compare to mean embeddings and get prediction.
-  int prediction_idx = get_prediction_idx(output);
+  int8_t prediction_idx = get_prediction_idx(output->data.int8);
   const char *prediction = get_prediction_label(prediction_idx);
   TF_LITE_REPORT_ERROR(error_reporter,
                      "Prediction %s", prediction);
