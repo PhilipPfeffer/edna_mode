@@ -70,7 +70,7 @@ def create_mean_embeddings_quant(embedding_size: int, test_data: np.ndarray, tes
         for key in mean_embeddings.keys():
             f.write("%s"%(key))
             for i in range(embedding_size):
-                f.write(",%s"%(mean_embeddings[key][i]))
+                f.write(",%s"%(int(mean_embeddings[key][i])))
             f.write("\n")
     
     # Store threshold to csv.
@@ -127,8 +127,10 @@ def create_mean_embeddings(embedding_size: int):
             f.write("\n")
 
 def print_mean_embeddings(run_quantized: bool):
+    dtype = 'int8_t' if run_quantized else 'float'
+
     label_string = 'const char *mean_embeddings_labels[num_labels] = {'
-    mean_embedding_string = 'const float mean_embeddings[num_labels][embedding_size] = {\n'
+    mean_embedding_string = f'const {dtype} mean_embeddings[num_labels][embedding_size] = ' + '{\n'
     threshold_string = 'const float thresholds[num_labels] = {'
     labels = []
     keys = []
