@@ -32,7 +32,7 @@ def create_mean_embeddings(embedding_size: int):
             label_embeddings = np.array([])
             for wav_file in os.scandir(label):
                 if len(wav_file.name.split('.')) == 2:  # Only consider .wav files, not .wav.old
-                    new_embedding = get_embedding_from_wav.get_embedding_from_wav(wav_file.path, embedding_size)
+                    new_embedding = get_embedding_from_wav.get_embedding_from_wav(wav_file.path, embedding_size, CONSTANTS.DATASET_FILEPATH)
                     label_embeddings = np.concatenate((label_embeddings, new_embedding),axis=0)
 
             # Calculate mean embedding for each label.
@@ -69,7 +69,7 @@ def create_mean_embeddings(embedding_size: int):
 
 def print_mean_embeddings():
     label_string = 'const char *mean_embeddings_labels[num_labels] = {'
-    mean_embedding_string = 'const float mean_embeddings[num_labels][embedding_size] = {\n'
+    mean_embedding_string = 'const int8_t mean_embeddings[num_labels][embedding_size] = {\n'
     threshold_string = 'const float thresholds[num_labels] = {'
     labels = []
     keys = []
