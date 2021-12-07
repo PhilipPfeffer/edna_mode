@@ -67,7 +67,7 @@ def run_tflite_inference(test_data, test_labels, tflite_model_path,  model_type=
     interpreter.invoke()
     output = interpreter.get_tensor(output_details["index"])[0]
     print(f'tflite output: {output}')
-    prediction = inference.inference(output)
+    prediction = inference.inference(output, model_type)
     correct_predictions += (prediction == test_labels[i])
 
   print('%s model accuracy is %f%% (Number of test samples=%d)' % (

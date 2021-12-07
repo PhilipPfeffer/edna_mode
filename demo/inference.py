@@ -21,10 +21,11 @@ def similarity(a, b):
 def dist(a, b):
     return np.linalg.norm(np.array(a) - np.array(b))
 
-def inference(query_embedding: np.ndarray) -> str:
+def inference(query_embedding: np.ndarray, model_type: str) -> str:
     # Load all embeddings from CSV.
+    MEAN_EMBEDDINGS_PATH = CONSTANTS.MEAN_EMBEDDINGS_QUANT_PATH if model_type == 'Quantized' else CONSTANTS.MEAN_EMBEDDINGS_FLOAT_PATH
     mean_embeddings = {}
-    with open(CONSTANTS.MEAN_EMBEDDINGS_PATH, mode='r') as infile:
+    with open(MEAN_EMBEDDINGS_PATH, mode='r') as infile:
         reader = csv.reader(infile)
         for row in reader:
             label = row[0]
@@ -54,7 +55,7 @@ if __name__ == "__main__":
 
     # Call get_embedding_from_wavs
     query_embedding = get_embedding_from_wav.get_embedding_from_wav(FLAGS.input_path, FLAGS.embedding_size)
-    prediction = inference(query_embedding)
+    prediction = inference(query_embedding, "Float")
     print("========================")
     print(f"PREDICTION: {prediction}")
     print("========================")
