@@ -42,7 +42,7 @@ def visualize_mean_embs(embedding_size: int):
     # Load all embeddings from CSV.
     mean_embeddings = []
     mean_embeddings_labels = []
-    with open(CONSTANTS.MEAN_EMBEDDINGS_PATH, mode='r') as infile:
+    with open(CONSTANTS.MEAN_EMBEDDINGS_FLOAT_PATH, mode='r') as infile:
         reader = csv.reader(infile)
         for row in reader:
             label = row[0]
@@ -75,14 +75,14 @@ def visualize_mean_embs(embedding_size: int):
     origin = np.array([[0, 0, 0],[0, 0, 0], [0, 0, 0]]) # origin point
     fig = plt.figure()
     ax = fig.gca(projection='3d')
-    ax.set_xlim3d(-1, 1)
-    ax.set_ylim3d(-1, 1)
-    ax.set_zlim3d(-1, 1)
+   # ax.set_xlim3d(-1, 1)
+    #ax.set_ylim3d(-1, 1)
+    #ax.set_zlim3d(-1, 1)
     ax.set_title(f"PCA Decomposition of {embedding_size}-d Mean Embeddings\nModel: {MODEL_NAME}")
 
     color_map = ['r', 'g', 'b']
     for i in range(len(mean_embeddings_pca)):
-        ax.quiver(*origin, mean_embeddings_pca[i,0], mean_embeddings_pca[i,1], mean_embeddings_pca[i,2], color=color_map[i], normalize=True)
+        ax.quiver(*origin, mean_embeddings_pca[i,0], mean_embeddings_pca[i,1], mean_embeddings_pca[i,2], color=color_map[i], normalize=False)
     ax.legend(mean_embeddings_labels)
 
     # Plot reference embeddings
